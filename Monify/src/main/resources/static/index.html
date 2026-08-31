@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MONIFY - Organização Financeira</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ===================== AUTH PAGE ===================== -->
+<div id="auth-page">
+    <nav class="navbar">
+        <div class="navbar-brand">MONIFY</div>
+    </nav>
+    <div class="auth-wrapper">
+        <div class="auth-left">
+            <div class="auth-left-content">
+                <div class="brand-logo">M</div>
+                <h1 class="brand-title">MONIFY</h1>
+                <p class="brand-subtitle">Organização Financeira Pessoal</p>
+                <ul class="brand-features">
+                    <li><span class="feat-icon">◈</span> Controle de receitas e despesas</li>
+                    <li><span class="feat-icon">◈</span> Relatórios detalhados</li>
+                    <li><span class="feat-icon">◈</span> Limites de gastos inteligentes</li>
+                    <li><span class="feat-icon">◈</span> Lançamentos organizados</li>
+                </ul>
+            </div>
+        </div>
+        <div class="auth-right">
+            <div class="auth-box">
+                <div class="auth-tabs">
+                    <button class="tab-btn active" onclick="switchTab('login')">Login</button>
+                    <button class="tab-btn" onclick="switchTab('register')">Cadastro</button>
+                </div>
+                <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
+                    <div class="form-welcome">
+                        <h2>Bem-vindo de volta</h2>
+                        <p>Acesse sua conta MONIFY</p>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="login-email" placeholder="seu@email.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Senha</label>
+                        <input type="password" id="login-password" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Entrar</button>
+                    <p class="switch-hint">Não tem conta? <a onclick="switchTab('register')">Cadastre-se</a></p>
+                </form>
+                <form id="register-form" class="auth-form" onsubmit="handleRegister(event)">
+                    <div class="form-welcome">
+                        <h2>Criar conta</h2>
+                        <p>Comece a organizar suas finanças</p>
+                    </div>
+                    <div class="form-group">
+                        <label>Nome</label>
+                        <input type="text" id="register-name" placeholder="Seu nome completo" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="register-email" placeholder="seu@email.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Senha</label>
+                        <input type="password" id="register-password" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Criar conta</button>
+                    <p class="switch-hint">Já tem conta? <a onclick="switchTab('login')">Faça login</a></p>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== APP PAGE ===================== -->
+<div id="app-page" style="display:none;">
+    <nav class="navbar navbar-app">
+        <button class="navbar-brand navbar-brand-button" type="button" onclick="goHome()" aria-label="Ir para a tela inicial">MONIFY</button>
+        <div class="navbar-menu">
+            <button class="nav-btn active" onclick="showSection('dashboard',event)">home</button>
+            <button class="nav-btn" onclick="showSection('lancamentos',event)">lançamentos</button>
+            <button class="nav-btn" onclick="showSection('relatorios',event)">relatórios</button>
+            <button class="nav-btn" onclick="showSection('limites',event)">limites</button>
+        </div>
+        <div class="navbar-actions">
+            <div class="profile-menu">
+                <button class="icon-btn" id="settings-menu-btn" onclick="openProfileModal()" title="Configurações"></button>
+                <button class="icon-btn" id="profile-menu-btn" onclick="toggleProfileMenu()" title="Perfil"></button>
+                <div id="profile-dropdown" class="profile-dropdown">
+                    <div class="profile-summary">
+                        <strong id="profile-user-name">Usuário</strong>
+                        <span id="profile-user-email"></span>
+                    </div>
+                    <button onclick="openProfileModal()">Configurações</button>
+                    <button onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ===== HOME ===== -->
+    <div id="dashboard-section" class="section active">
+        <div class="hero-card">
+            <div class="hero-greeting">
+                <span id="greeting-time">Boa noite,</span>
+                <strong id="greeting-name">Usuário!</strong>
+            </div>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <span class="stat-label">Receitas no mês atual</span>
+                    <span class="stat-value income" id="hero-income">R$ 0,00</span>
+                </div>
+                <div class="hero-divider"></div>
+                <div class="hero-stat">
+                    <span class="stat-label">Despesas no mês atual</span>
+                    <span class="stat-value expense" id="hero-expense">R$ 0,00</span>
+                </div>
+                <div class="hero-chart-icon">📊</div>
+            </div>
+            <div class="hero-quick">
+                <span class="quick-label">Acesso rápido</span>
+                <div class="quick-btns">
+                    <button class="quick-btn" onclick="openQuickAdd('EXPENSE')">
+                        <span class="quick-icon">⊖</span><span>Despesa</span>
+                    </button>
+                    <button class="quick-btn" onclick="openQuickAdd('INCOME')">
+                        <span class="quick-icon">⊕</span><span>Receita</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- Saldo Geral -->
+            <div class="dash-card" id="card-saldo">
+                <div class="dash-card-header">
+                    <div class="dash-card-title">
+                        <div class="card-accent"></div>
+                        <span>Saldo Geral</span>
+                        <button class="eye-btn" onclick="toggleVisibility('balance-val')" type="button"></button>
+                    </div>
+                    <button class="card-chevron" onclick="toggleCard('saldo-body',this)">︿</button>
+                </div>
+                <div id="saldo-body" class="dash-card-body expanded">
+                    <div class="dash-amount-row">
+                        <span id="balance-val" class="dash-amount">R$ 0,00</span>
+                    </div>
+                    <div id="accounts-list"></div>
+                    <button class="manage-btn" onclick="openAccountsModal()">Gerenciar contas</button>
+                </div>
+            </div>
+
+            <!-- Todas as Faturas -->
+            <div class="dash-card" id="card-faturas">
+                <div class="dash-card-header">
+                    <div class="dash-card-title">
+                        <div class="card-accent"></div>
+                        <span>Todas as Faturas</span>
+                        <button class="eye-btn" onclick="toggleVisibility('faturas-val')" type="button"></button>
+                    </div>
+                    <button class="card-chevron" onclick="toggleCard('faturas-body',this)">︿</button>
+                </div>
+                <div id="faturas-body" class="dash-card-body expanded">
+                    <div class="dash-amount-row">
+                        <span id="faturas-val" class="dash-amount">R$ 0,00</span>
+                    </div>
+                    <p class="subsection-title">Meus cartões</p>
+                    <div id="cards-list"></div>
+                    <button class="manage-btn" onclick="openCardsModal()">Adicionar cartão</button>
+                </div>
+            </div>
+
+            <!-- Contas a pagar -->
+            <div class="dash-card">
+                <div class="dash-card-header">
+                    <div class="dash-card-title"><span>Contas a pagar</span></div>
+                    <button class="card-chevron" onclick="toggleCard('pagar-body',this)">︿</button>
+                </div>
+                <div id="pagar-body" class="dash-card-body expanded">
+                    <div class="card-empty-state alone">
+                        <p>No momento você não possui contas a pagar</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contas a receber -->
+            <div class="dash-card">
+                <div class="dash-card-header">
+                    <div class="dash-card-title"><span>Contas a receber</span></div>
+                    <button class="card-chevron" onclick="toggleCard('receber-body',this)">︿</button>
+                </div>
+                <div id="receber-body" class="dash-card-body expanded">
+                    <div class="card-empty-state alone">
+                        <p>No momento você não possui contas a receber pendentes</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Maiores gastos -->
+            <div class="dash-card">
+                <div class="dash-card-header">
+                    <div class="dash-card-title"><span>Maiores gastos do mês atual</span></div>
+                    <div style="display:flex;gap:0.4rem;align-items:center;">
+                        <button class="card-chevron">⚙</button>
+                        <button class="card-chevron" onclick="toggleCard('gastos-body',this)">︿</button>
+                    </div>
+                </div>
+                <div id="gastos-body" class="dash-card-body expanded">
+                    <div class="gastos-inner">
+                        <div class="gastos-list" id="gastos-list">
+                            <div class="card-empty-state alone"><p>Sem gastos no período</p></div>
+                        </div>
+                        <div class="gastos-chart-wrap">
+                            <canvas id="gastosChart" width="120" height="120"></canvas>
+                        </div>
+                    </div>
+                    <div style="text-align:right;margin-top:0.75rem;">
+                        <button class="link-btn" onclick="showSection('relatorios',{target:document.querySelectorAll('.nav-btn')[2]})">Ver relatório</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Limites -->
+            <div class="dash-card">
+                <div class="dash-card-header">
+                    <div class="dash-card-title"><span id="dashboard-limits-title">Limites de gastos</span></div>
+                    <button class="card-chevron" onclick="toggleCard('limites-body',this)">︿</button>
+                </div>
+                <div id="limites-body" class="dash-card-body expanded">
+                    <div class="card-empty-state alone">
+                        <p>Você não possui limites configurados</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== LANÇAMENTOS ===== -->
+    <div id="lancamentos-section" class="section">
+        <div class="page-card">
+            <div class="page-card-header">
+                <h2 class="page-title">Lançamentos</h2>
+                <div class="month-nav">
+                    <button class="month-btn" onclick="changeMonth(-1,'lanc')">‹</button>
+                    <span id="lanc-month-label">Maio 2026</span>
+                    <button class="month-btn" onclick="changeMonth(1,'lanc')">›</button>
+                </div>
+                <div class="page-header-actions">
+                    <button class="btn btn-primary-dark compact-action" onclick="openTransactionModalFromLancamentos('INCOME')" type="button">Receita</button>
+                    <button class="btn btn-primary-dark compact-action" onclick="openTransactionModalFromLancamentos('EXPENSE')" type="button">Despesa</button>
+                    <button class="btn btn-primary-dark compact-action" title="Pesquisar" onclick="toggleLancSearch()" type="button">Pesquisar</button>
+                </div>
+            </div>
+
+            <div class="lanc-filters">
+                <button class="filter-clear" onclick="clearLancFilters()">✕</button>
+                <div class="filter-dropdown">
+                    <button class="filter-btn" onclick="toggleDropdown('tipo-dd')">Tipo ▾</button>
+                    <div class="dropdown-menu" id="tipo-dd">
+                        <label><input type="checkbox" value="type:INCOME"> Receitas</label>
+                        <label><input type="checkbox" value="type:EXPENSE"> Despesas</label>
+                    </div>
+                </div>
+                <div class="filter-dropdown">
+                    <button class="filter-btn" onclick="toggleDropdown('cat-dd')">Categorias ▾</button>
+                    <div class="dropdown-menu dropdown-wide" id="cat-dd">
+                        <p class="dd-group-label">Categorias cadastradas</p>
+                        <p class="filter-loading">Carregando categorias...</p>
+                    </div>
+                </div>
+                <button class="filter-search-btn">🔍</button>
+                <div id="lanc-search-box" class="lanc-search-box" style="display:none;">
+                    <input type="search" id="lanc-search-input" placeholder="Pesquisar lançamentos..." oninput="applyLancSearch()">
+                </div>
+            </div>
+
+            <div class="lanc-list-area" id="lanc-list">
+                <div class="page-empty-state">
+                    <div class="empty-icon-circle">!</div>
+                    <p>Nenhuma movimentação no período.</p>
+                </div>
+            </div>
+
+            <div class="lanc-footer">
+                <div class="lanc-footer-summary" id="lanc-summary-collapsed">
+                    <div class="lanc-footer-row">
+                        <span>saldo</span><span class="val-purple" id="f-saldo">0,00</span>
+                    </div>
+                    <div class="lanc-footer-row">
+                        <span>previsto</span><span id="f-previsto">0,00</span>
+                    </div>
+                </div>
+                <div class="lanc-footer-expanded" id="lanc-summary-expanded" style="display:none;">
+                    <div class="lanc-footer-row border-bottom"><span>saldo anterior</span><span>0,00</span></div>
+                    <div class="lanc-footer-row"><span>receita realizada</span><span class="val-green">0,00</span></div>
+                    <div class="lanc-footer-row"><span>receita prevista</span><span>0,00</span></div>
+                    <div class="lanc-footer-row"><span>despesa realizada</span><span class="val-red">0,00</span></div>
+                    <div class="lanc-footer-row"><span>despesa prevista</span><span>0,00</span></div>
+                    <div class="lanc-footer-row border-top"><span>saldo</span><span class="val-purple">0,00</span></div>
+                    <div class="lanc-footer-row"><span>previsto</span><span>0,00</span></div>
+                </div>
+                <div class="lanc-footer-btns">
+                    <button class="toggle-summary-btn" onclick="toggleLancSummary()" id="summary-toggle-btn">+</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== RELATÓRIOS ===== -->
+    <div id="relatorios-section" class="section">
+        <div class="page-card">
+            <div class="page-card-header">
+                <h2 class="page-title">Relatórios</h2>
+                <div class="month-nav">
+                    <button class="month-btn" onclick="changeMonth(-1,'rel')">‹</button>
+                    <span id="rel-month-label">Maio 2026</span>
+                    <button class="month-btn" onclick="changeMonth(1,'rel')">›</button>
+                </div>
+            </div>
+
+            <div class="page-tabs">
+                <button class="page-tab active" onclick="switchPageTab('rel','categorias',this)">Categorias</button>
+                <button class="page-tab" onclick="switchPageTab('rel','entradas',this)">Entradas x Saídas</button>
+            </div>
+
+            <!-- Categorias tab -->
+            <div id="rel-categorias" class="page-tab-content active">
+                <div class="rel-toolbar">
+                    <button id="rel-filter-button" class="rel-filter-button" onclick="openReportFiltersModal()" type="button">Filtros <span id="rel-filter-count"></span></button>
+                    <div class="report-view-tabs" aria-label="Visualização do relatório">
+                        <button class="report-view-tab active" onclick="switchRelView('categories',this)" type="button">Categorias</button>
+                        <button class="report-view-tab" onclick="switchRelView('evolution',this)" type="button">Evolução</button>
+                    </div>
+                </div>
+
+                <div id="rel-cat-content">
+                    <div class="page-empty-state">
+                        <div class="empty-icon-circle">!</div>
+                        <p>Nenhum lançamento no período</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Entradas x Saídas tab -->
+            <div id="rel-entradas" class="page-tab-content">
+                <div class="rel-toolbar">
+                    <div class="rel-period-tabs">
+                        <button class="period-tab active" onclick="switchPeriod('diario',this)">diário</button>
+                        <button class="period-tab" onclick="switchPeriod('semanal',this)">semanal</button>
+                        <button class="period-tab" onclick="switchPeriod('mensal',this)">mensal</button>
+                        <button class="period-tab" onclick="switchPeriod('acumulado',this)">acumulado</button>
+                    </div>
+                </div>
+                <div id="rel-ent-sai-content">
+                    <div class="page-empty-state">
+                        <div class="empty-icon-circle">!</div>
+                        <p>Nenhum lançamento no período</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== LIMITES ===== -->
+    <div id="limites-section" class="section">
+        <div class="page-card">
+            <div class="page-card-header">
+                <h2 class="page-title">Limite de gastos</h2>
+                <div class="month-nav">
+                    <button class="month-btn" onclick="changeMonth(-1,'lim')">‹</button>
+                    <span id="lim-month-label">Maio 2026</span>
+                    <button class="month-btn" onclick="changeMonth(1,'lim')">›</button>
+                </div>
+            </div>
+
+            <div id="lim-categorias" class="page-tab-content active">
+                <div id="limites-list">
+                    <div class="lim-empty">
+                        <p id="lim-empty-msg">Nenhum limite de gasto definido em Maio 2026</p>
+                        <button class="manage-btn" onclick="openLimitModal()">Definir limite de gastos</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- ===== QUICK ADD MODAL ===== -->
+<div id="quick-modal" class="modal-overlay" style="display:none;" onclick="closeModalOutside(event)">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 id="modal-title">Nova Despesa</h3>
+            <button class="modal-close" onclick="closeQuickModal()">✕</button>
+        </div>
+        <form onsubmit="handleQuickAdd(event)">
+            <div class="form-group">
+                <label>Tipo</label>
+                <select id="q-type">
+                    <option value="EXPENSE">Despesa</option>
+                    <option value="INCOME">Receita</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Categoria</label>
+                <select id="q-category"></select>
+            </div>
+            <div class="form-group">
+                <label>Periodicidade</label>
+                <select id="q-periodicity" required>
+                    <option value="SINGLE">Unico</option>
+                    <option value="MONTHLY">Mensal</option>
+                    <option value="ANNUAL">Anual</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Situacao</label>
+                <select id="q-status" required>
+                    <option value="COMPLETED">Efetivado</option>
+                    <option value="PENDING">Pendente</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Origem da movimentacao</label>
+                <select id="q-origin" required></select>
+                <small class="form-help" id="q-origin-help"></small>
+            </div>
+            <div class="form-group" id="q-card-payment-group" hidden>
+                <label>Forma da compra no cartao</label>
+                <select id="q-card-payment-mode">
+                    <option value="ONE_TIME">A vista</option>
+                    <option value="INSTALLMENT">Parcelada</option>
+                </select>
+            </div>
+            <div class="form-group" id="q-installment-group" hidden>
+                <label>Quantidade de parcelas</label>
+                <input type="number" id="q-installment-count" min="2" max="60" step="1" value="2">
+                <small class="form-help" id="q-installment-preview"></small>
+            </div>
+            <div class="form-group">
+                <label>Valor</label>
+                <input type="number" id="q-amount" step="0.01" min="0" placeholder="0,00" required>
+            </div>
+            <div class="form-group">
+                <label>Descrição</label>
+                <input type="text" id="q-description" placeholder="Descrição..." required>
+            </div>
+            <div class="form-group">
+                <label>Data</label>
+                <input type="date" id="q-date" required>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeQuickModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary-dark" id="transaction-submit-button">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== LIMIT MODAL ===== -->
+<div id="limit-modal" class="modal-overlay" style="display:none;" onclick="closeModalOutside(event)">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 id="limit-modal-title">Definir Limite de Gastos</h3>
+            <button class="modal-close" onclick="closeLimitModal()">✕</button>
+        </div>
+        <form onsubmit="handleAddLimit(event)">
+            <div class="form-group">
+                <label>Categoria</label>
+                <select id="lim-category" required></select>
+            </div>
+            <div class="form-group">
+                <label>Valor limite (R$)</label>
+                <input type="number" id="lim-value" step="0.01" min="0" placeholder="0,00" required>
+            </div>
+            <div class="form-group">
+                <label>Valor utilizado (R$)</label>
+                <input type="number" id="lim-used-value" step="0.01" min="0" placeholder="0,00" required>
+            </div>
+            <div class="form-group">
+                <label>Mês de referência</label>
+                <input type="month" id="lim-month">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeLimitModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary-dark" id="limit-submit-button">Salvar limite</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== REPORT FILTERS MODAL ===== -->
+<div id="report-filters-modal" class="modal-overlay" style="display:none;" onclick="closeModalOutside(event)">
+    <div class="modal-box report-filter-modal">
+        <div class="modal-header">
+            <h3>Filtrar relatórios</h3>
+            <button class="modal-close" onclick="closeReportFiltersModal()" type="button">x</button>
+        </div>
+        <div class="report-filter-section">
+            <span class="report-filter-title">Tipos</span>
+            <label class="modal-check"><input type="checkbox" id="rel-filter-income" value="INCOME"> Receitas</label>
+            <label class="modal-check"><input type="checkbox" id="rel-filter-expense" value="EXPENSE"> Despesas</label>
+        </div>
+        <div class="report-filter-section">
+            <span class="report-filter-title">Categorias cadastradas</span>
+            <div id="rel-filter-categories" class="report-filter-categories"></div>
+        </div>
+        <div class="report-filter-section">
+            <span class="report-filter-title">Origem da movimentacao</span>
+            <div id="rel-filter-origins" class="report-filter-categories"></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="clearReportFilters()">Limpar</button>
+            <button type="button" class="btn btn-primary-dark" onclick="applyReportFilters()">Aplicar filtros</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== ACCOUNTS MODAL ===== -->
+<div id="accounts-modal" class="modal-overlay" style="display:none;" onclick="closeModalOutside(event)">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Gerenciar Contas</h3>
+            <button class="modal-close" onclick="closeAccountsModal()">x</button>
+        </div>
+        <form onsubmit="handleAddAccount(event)">
+            <div class="form-group">
+                <label>Nome</label>
+                <input type="text" id="account-name" placeholder="Conta principal" required>
+            </div>
+            <div class="form-group">
+                <label>Tipo</label>
+                <select id="account-type" required>
+                    <option value="CHECKING">Conta corrente</option>
+                    <option value="SAVINGS">Poupança</option>
+                    <option value="CASH">Dinheiro</option>
+                    <option value="INVESTMENT">Investimento</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Saldo</label>
+                <input type="number" id="account-balance" step="0.01" placeholder="0,00" required>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary-dark">Adicionar conta</button>
+            </div>
+        </form>
+        <div id="accounts-modal-list" class="modal-list"></div>
+    </div>
+</div>
+
+<!-- ===== CARDS MODAL ===== -->
+<div id="cards-modal" class="modal-overlay" style="display:none;" onclick="closeModalOutside(event)">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Adicionar Cartão</h3>
+            <button class="modal-close" onclick="closeCardsModal()">x</button>
+        </div>
+        <form onsubmit="handleAddCard(event)">
+            <div class="form-group">
+                <label>Nome do cartão</label>
+                <input type="text" id="card-name" placeholder="Nubank, Inter..." required>
+            </div>
+            <div class="form-group">
+                <label>Limite</label>
+                <input type="number" id="card-limit" step="0.01" min="0" placeholder="0,00" required>
+            </div>
+            <div class="form-group">
+                <label>Final</label>
+                <input type="text" id="card-last-four" maxlength="4" pattern="[0-9]{4}" placeholder="1234" required>
+            </div>
+            <div class="form-group">
+                <label>Bandeira</label>
+                <input type="text" id="card-brand" placeholder="Visa, Mastercard..." required>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary-dark">Adicionar cartão</button>
+            </div>
+        </form>
+        <div id="cards-modal-list" class="modal-list"></div>
+    </div>
+</div>
+
+<!-- ===== PROFILE MODAL ===== -->
+<div id="profile-modal" class="modal-overlay" style="display:none;" onclick="closeModalOutside(event)">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Configurações</h3>
+            <button class="modal-close" onclick="closeProfileModal()">x</button>
+        </div>
+        <form onsubmit="handleProfileUpdate(event)">
+            <div class="form-group">
+                <label>Nome</label>
+                <input type="text" id="profile-name" required>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="profile-email" required>
+            </div>
+            <div class="profile-info">
+                <span>Dados do usuário autenticado</span>
+                <strong id="profile-user-name-modal"></strong>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeProfileModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary-dark">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="app.js?v=20260622-3"></script>
+</body>
+</html>

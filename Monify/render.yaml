@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: monify-app
+    runtime: docker
+    plan: free
+    healthCheckPath: /
+    autoDeployTrigger: commit
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: JPA_DDL_AUTO
+        value: update
+      - key: APP_LOG_LEVEL
+        value: INFO
+      - key: SQL_LOG_LEVEL
+        value: WARN
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
