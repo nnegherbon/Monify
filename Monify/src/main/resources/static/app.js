@@ -474,7 +474,7 @@ async function handleAddAccount(e) {
 }
 
 async function deleteAccount(id) {
-    if (!confirm('Excluir esta conta?')) return;
+    if (!(await customConfirm('Excluir esta conta?'))) return;
     try {
         const res = await fetch(`${API_BASE_URL}/users/${currentUser.id}/accounts/${id}`, { method: 'DELETE' });
         if (!res.ok) throw await res.json();
@@ -516,7 +516,7 @@ async function handleAddCard(e) {
 }
 
 async function deleteCreditCard(id) {
-    if (!confirm('Excluir este cartao?')) return;
+    if (!(await customConfirm('Excluir este cartao?'))) return;
     try {
         const res = await fetch(`${API_BASE_URL}/users/${currentUser.id}/cards/${id}`, { method: 'DELETE' });
         if (!res.ok) throw await res.json();
@@ -690,7 +690,7 @@ async function settleTransaction(id) {
     }
 
     const action = transaction.type === 'INCOME' ? 'receber' : 'pagar';
-    if (!confirm(`Deseja ${action} ${transaction.description}?`)) return;
+    if (!(await customConfirm(`Deseja ${action} ${transaction.description}?`))) return;
     try {
         const response = await fetch(
             `${API_BASE_URL}/transactions/${id}/settle?userId=${currentUser.id}`,
@@ -738,7 +738,7 @@ function renderGastosCard() {
     });
     const sorted = Object.entries(groups).sort((a,b) => b[1].total - a[1].total);
     const total = sorted.reduce((a,[,g]) => a + g.total, 0);
-    const colors = ['#EFB4B4','#494FDF','#C1D8C0','#f59e0b','#6262D3','#CF0404','#BEBEBE','#14A10C'];
+    const colors = ['#EFB4B4','#B8863B','#C1D8C0','#f59e0b','#D9A65C','#C0392B','#BEBEBE','#1F9E6D'];
 
     listEl.innerHTML = sorted.slice(0,5).map(([name, g], i) => {
         const pct = ((g.total/total)*100).toFixed(1);
@@ -1214,7 +1214,7 @@ function setupDropdownClose() {
 }
 
 async function deleteTransaction(id) {
-    if (!confirm('Tem certeza que deseja deletar esta transação?')) return;
+    if (!(await customConfirm('Tem certeza que deseja deletar esta transação?'))) return;
     try {
         const res = await fetch(`${API_BASE_URL}/transactions/${id}`, { method:'DELETE' });
         if (res.ok) { await fetchAllTransactions(); renderLancamentos(); loadDashboard(); }
@@ -1280,7 +1280,7 @@ function groupTransactionsByCategory(transactions) {
             grouped.set(key, {
                 name: transaction.categoryName || 'Outros',
                 icon: transaction.categoryIcon || '',
-                color: transaction.categoryColor || '#6262D3',
+                color: transaction.categoryColor || '#D9A65C',
                 total: 0
             });
         }
@@ -1388,7 +1388,7 @@ function renderCategoryEvolution(container, transactions) {
                 datasets: [{
                     label: 'Saldo',
                     data: groups.map(group => group.balance),
-                    borderColor: '#494FDF',
+                    borderColor: '#B8863B',
                     backgroundColor: 'rgba(73,79,223,0.12)',
                     fill: true,
                     tension: 0.28,
@@ -1660,9 +1660,9 @@ function createFlowCharts(groups) {
             data: {
                 labels,
                 datasets: [
-                    { label: 'Entradas', data: groups.map(group => group.income), backgroundColor: '#14A10C' },
-                    { label: 'Saídas', data: groups.map(group => group.expense), backgroundColor: '#CF0404' },
-                    { label: 'Resultado', data: groups.map(group => group.result), backgroundColor: '#494FDF' }
+                    { label: 'Entradas', data: groups.map(group => group.income), backgroundColor: '#1F9E6D' },
+                    { label: 'Saídas', data: groups.map(group => group.expense), backgroundColor: '#C0392B' },
+                    { label: 'Resultado', data: groups.map(group => group.result), backgroundColor: '#B8863B' }
                 ]
             },
             options: reportChartOptions()
@@ -1676,7 +1676,7 @@ function createFlowCharts(groups) {
                 datasets: [{
                     label: 'Saldo',
                     data: groups.map(group => group.balance),
-                    borderColor: '#494FDF',
+                    borderColor: '#B8863B',
                     backgroundColor: 'rgba(73,79,223,0.12)',
                     fill: true,
                     tension: 0.28,
@@ -1888,7 +1888,7 @@ async function handleAddLimit(event) {
 }
 
 async function removeLimit(id) {
-    if (!confirm('Remover este limite?')) return;
+    if (!(await customConfirm('Remover este limite?'))) return;
     try {
         const response = await fetch(
             API_BASE_URL + '/users/' + currentUser.id + '/limits/' + id,

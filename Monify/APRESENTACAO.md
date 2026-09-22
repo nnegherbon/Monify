@@ -6,13 +6,13 @@ Este material foi preparado a partir do codigo existente no repositorio. Ele pod
 
 ### Nome e proposta
 
-O **Monify** e uma aplicacao web de organizacao financeira pessoal. O problema tratado e a dificuldade de acompanhar ganhos, gastos, contas futuras e saldo em diferentes contas ou cartoes.
+O **Monify** e uma aplicacao web de gestao financeira para hoteis de pequeno e medio porte. O problema tratado e a dificuldade de acompanhar receitas (reservas, eventos, servicos adicionais), despesas (manutencao, insumos, folha de pagamento, encargos), contas futuras e saldo em diferentes contas ou cartoes corporativos.
 
-O publico-alvo e qualquer pessoa que queira organizar as proprias financas de forma centralizada e visual. O objetivo principal e permitir que o usuario registre receitas e despesas, acompanhe movimentacoes realizadas e pendentes e consulte resumos e relatorios.
+O publico-alvo e a equipe administrativa/financeira de um hotel que precisa organizar o fluxo de caixa de forma centralizada e visual. O objetivo principal e permitir que o usuario registre receitas e despesas do hotel, acompanhe movimentacoes realizadas e pendentes e consulte resumos e relatorios para apoiar decisoes estrategicas.
 
 ### Cenario de uso
 
-Um usuario cria seu cadastro, entra no sistema e cadastra uma conta corrente ou poupanca. Depois registra o salario como receita mensal, o aluguel como despesa mensal e compras no cartao como despesas. O dashboard mostra saldos, faturas, contas pendentes, maiores gastos e limites. Quando uma conta pendente e paga ou recebida, o sistema atualiza a origem financeira e, se ela for recorrente, cria a proxima ocorrencia.
+Um funcionario do hotel cria seu cadastro, entra no sistema e cadastra a conta corrente ou o caixa do hotel. Depois registra a receita de uma reserva ou evento como receita mensal, a folha de pagamento e a manutencao como despesas mensais e compras no cartao corporativo como despesas. O dashboard mostra saldos, faturas, contas pendentes, maiores gastos e limites por categoria. Quando uma conta pendente e paga ou recebida, o sistema atualiza a origem financeira e, se ela for recorrente, cria a proxima ocorrencia.
 
 ## 2. Requisitos e funcionalidades realmente implementadas
 
@@ -258,9 +258,9 @@ Nao existem tabelas de contas a pagar, contas a receber ou relatorios. Essas vis
 
 ## 6. Fluxo completo dos dados
 
-Exemplo: cadastrar e receber um salario mensal.
+Exemplo: cadastrar e receber a receita de uma reserva mensal.
 
-1. O usuario preenche receita, categoria Salario, periodicidade mensal, status pendente e conta corrente.
+1. O usuario preenche receita, categoria Reservas, periodicidade mensal, status pendente e conta corrente.
 2. `app.js` envia JSON para `POST /api/transactions?userId=...`.
 3. O controller valida o DTO e chama `TransactionService.createTransaction`.
 4. O service busca usuario, categoria e conta, valida a origem e salva a entidade pelo repository.
@@ -313,7 +313,7 @@ Estas dificuldades sao sustentadas pelo codigo atual e pelo historico recente de
 
 ### 0:00 a 1:15 - Introducao e problema
 
-> O Monify e uma aplicacao web para organizacao financeira pessoal. Ele centraliza receitas, despesas, saldos, contas futuras, cartoes, limites e relatorios. O publico e formado por pessoas que precisam entender para onde o dinheiro vai e quais compromissos ainda estao pendentes.
+> O Monify e uma aplicacao web para gestao financeira de hoteis. Ele centraliza receitas (reservas, eventos, servicos), despesas (manutencao, insumos, folha de pagamento, encargos), saldos, contas futuras, cartoes corporativos, limites por categoria e relatorios. O publico e formado pela equipe do hotel que precisa entender para onde o dinheiro vai e quais compromissos ainda estao pendentes.
 
 ### 1:15 a 2:15 - Escopo implementado
 
@@ -353,7 +353,7 @@ Assuma tecnicamente as limitacoes: senha sem hash, ausencia de Spring Security, 
 
 ### 14:00 a 15:00 - Conclusao e perguntas
 
-> O projeto atende o nucleo do controle financeiro pessoal e demonstra uma aplicacao web completa, com frontend integrado a API REST, persistencia relacional, regras de negocio, testes, CI e deploy. O principal proximo passo e fortalecer seguranca e automatizar ainda mais os indicadores.
+> O projeto atende o nucleo do controle financeiro hoteleiro e demonstra uma aplicacao web completa, com frontend integrado a API REST, persistencia relacional, regras de negocio, testes, CI e deploy. O principal proximo passo e fortalecer seguranca e automatizar ainda mais os indicadores.
 
 ## 10. Perguntas que o professor pode fazer
 
@@ -385,8 +385,8 @@ Assuma tecnicamente as limitacoes: senha sem hash, ausencia de Spring Security, 
 
 ## 11. Resumo curto para consulta durante a apresentacao
 
-- **Problema:** dificuldade de acompanhar receitas, despesas, pendencias e saldo.
-- **Solucao:** Monify, aplicacao web de controle financeiro pessoal.
+- **Problema:** dificuldade de acompanhar receitas, despesas, pendencias e saldo de um hotel.
+- **Solucao:** Monify, aplicacao web de controle financeiro para hoteis.
 - **Nucleo:** usuarios, categorias, transacoes, contas, cartoes e limites.
 - **Arquitetura:** frontend estatico -> API REST -> services -> JPA -> PostgreSQL.
 - **Regra principal:** somente transacoes realizadas afetam saldo e relatorios.
