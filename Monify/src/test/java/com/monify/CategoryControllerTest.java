@@ -111,18 +111,15 @@ class CategoryControllerTest {
         categoryService.initializeDefaultCategories();
 
         assertTrue(categoryRepository.findByName("Categoria Personalizada").isPresent());
-        assertTrue(categoryRepository.findByName("Alimentação").isPresent());
-        assertTrue(categoryRepository.findByName("Transporte").isPresent());
-        assertTrue(categoryRepository.findByName("Saúde").isPresent());
-        assertTrue(categoryRepository.findByName("Lazer").isPresent());
-        assertTrue(categoryRepository.findByName("Salário").isPresent());
-        assertTrue(categoryRepository.findByName("Educação").isPresent());
+        assertTrue(categoryRepository.findByName("Reservas").isPresent());
+        assertTrue(categoryRepository.findByName("Eventos").isPresent());
+        assertTrue(categoryRepository.findByName("Serviços Adicionais").isPresent());
+        assertTrue(categoryRepository.findByName("Manutenção").isPresent());
+        assertTrue(categoryRepository.findByName("Insumos").isPresent());
+        assertTrue(categoryRepository.findByName("Folha de Pagamento").isPresent());
+        assertTrue(categoryRepository.findByName("Encargos").isPresent());
         assertTrue(categoryRepository.findByName("Utilidades").isPresent());
         assertTrue(categoryRepository.findByName("Outros").isPresent());
-        assertTrue(categoryRepository.findByName("Moradia").isPresent());
-        assertTrue(categoryRepository.findByName("Compras").isPresent());
-        assertTrue(categoryRepository.findByName("Investimentos").isPresent());
-        assertTrue(categoryRepository.findByName("Presentes").isPresent());
-        assertEquals(13, categoryRepository.count());
+        assertEquals(10, categoryRepository.count());
     }
 }

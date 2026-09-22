@@ -45,18 +45,18 @@ public class CategoryService {
     }
 
     public void initializeDefaultCategories() {
-        ensureDefaultCategory("Alimentação", "🍔", "#FF6B6B");
-        ensureDefaultCategory("Transporte", "🚗", "#4ECDC4");
-        ensureDefaultCategory("Saúde", "🏥", "#45B7D1");
-        ensureDefaultCategory("Lazer", "🎮", "#FFA07A");
-        ensureDefaultCategory("Salário", "💰", "#98D8C8");
-        ensureDefaultCategory("Educação", "📚", "#6C5CE7");
-        ensureDefaultCategory("Utilidades", "💡", "#FDCB6E");
+        // Receitas do hotel (RF001/RF002 - reservas, eventos e serviços adicionais)
+        ensureDefaultCategory("Reservas", "🛏️", "#1F9E6D");
+        ensureDefaultCategory("Eventos", "🎉", "#D9A65C");
+        ensureDefaultCategory("Serviços Adicionais", "🛎️", "#4FB3BF");
+
+        // Despesas do hotel (RF003/RF004 - manutenção, insumos, folha de pagamento e encargos)
+        ensureDefaultCategory("Manutenção", "🛠️", "#8C6D46");
+        ensureDefaultCategory("Insumos", "📦", "#B8863B");
+        ensureDefaultCategory("Folha de Pagamento", "👥", "#5D6D7E");
+        ensureDefaultCategory("Encargos", "🧾", "#C0392B");
+        ensureDefaultCategory("Utilidades", "💡", "#E1B12C");
         ensureDefaultCategory("Outros", "📌", "#95A5A6");
-        ensureDefaultCategory("Moradia", "🏠", "#2ECC71");
-        ensureDefaultCategory("Compras", "🛍️", "#9B59B6");
-        ensureDefaultCategory("Investimentos", "📈", "#F1C40F");
-        ensureDefaultCategory("Presentes", "🎁", "#E74C3C");
     }
 
     private void ensureDefaultCategory(String name, String icon, String color) {

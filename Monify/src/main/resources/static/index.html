@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MONIFY - Organização Financeira</title>
+    <title>Hotel Bella Julia - Gestão Financeira</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -15,20 +15,21 @@
 <!-- ===================== AUTH PAGE ===================== -->
 <div id="auth-page">
     <nav class="navbar">
-        <div class="navbar-brand">MONIFY</div>
+        <div class="navbar-brand">Hotel Bella Julia</div>
     </nav>
     <div class="auth-wrapper">
         <div class="auth-left">
             <div class="auth-left-content">
-                <div class="brand-logo">M</div>
-                <h1 class="brand-title">MONIFY</h1>
-                <p class="brand-subtitle">Organização Financeira Pessoal</p>
+                <div class="brand-logo">BJ</div>
+                <h1 class="brand-title">HOTEL BELLA JULIA</h1>
+                <p class="brand-subtitle">Gestão Financeira para Hotéis</p>
                 <ul class="brand-features">
-                    <li><span class="feat-icon">◈</span> Controle de receitas e despesas</li>
-                    <li><span class="feat-icon">◈</span> Relatórios detalhados</li>
-                    <li><span class="feat-icon">◈</span> Limites de gastos inteligentes</li>
-                    <li><span class="feat-icon">◈</span> Lançamentos organizados</li>
+                    <li><span class="feat-icon">◈</span> Receitas de reservas, eventos e serviços</li>
+                    <li><span class="feat-icon">◈</span> Despesas de manutenção, insumos e folha</li>
+                    <li><span class="feat-icon">◈</span> Fluxo de caixa do hotel em tempo real</li>
+                    <li><span class="feat-icon">◈</span> Relatórios para decisões estratégicas</li>
                 </ul>
+                <p style="margin-top:1.5rem;font-size:0.72rem;color:rgba(255,255,255,0.35);">Ambiente de demonstração · use recepcao@hotelbellajulia.com.br / demo123</p>
             </div>
         </div>
         <div class="auth-right">
@@ -40,7 +41,7 @@
                 <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
                     <div class="form-welcome">
                         <h2>Bem-vindo de volta</h2>
-                        <p>Acesse sua conta MONIFY</p>
+                        <p>Acesse o sistema financeiro do seu hotel</p>
                     </div>
                     <div class="form-group">
                         <label>Email</label>
@@ -56,7 +57,7 @@
                 <form id="register-form" class="auth-form" onsubmit="handleRegister(event)">
                     <div class="form-welcome">
                         <h2>Criar conta</h2>
-                        <p>Comece a organizar suas finanças</p>
+                        <p>Comece a organizar as finanças do seu hotel</p>
                     </div>
                     <div class="form-group">
                         <label>Nome</label>
@@ -81,7 +82,7 @@
 <!-- ===================== APP PAGE ===================== -->
 <div id="app-page" style="display:none;">
     <nav class="navbar navbar-app">
-        <button class="navbar-brand navbar-brand-button" type="button" onclick="goHome()" aria-label="Ir para a tela inicial">MONIFY</button>
+        <button class="navbar-brand navbar-brand-button" type="button" onclick="goHome()" aria-label="Ir para a tela inicial">Hotel Bella Julia</button>
         <div class="navbar-menu">
             <button class="nav-btn active" onclick="showSection('dashboard',event)">home</button>
             <button class="nav-btn" onclick="showSection('lancamentos',event)">lançamentos</button>
@@ -98,6 +99,7 @@
                         <span id="profile-user-email"></span>
                     </div>
                     <button onclick="openProfileModal()">Configurações</button>
+                    <button onclick="if(confirm('Restaurar os dados de demonstração? Isso apaga tudo que você adicionou.')){window.__resetMockDb && window.__resetMockDb(); location.reload();}">Restaurar dados de demonstração</button>
                     <button onclick="logout()">Logout</button>
                 </div>
             </div>
@@ -113,12 +115,12 @@
             </div>
             <div class="hero-stats">
                 <div class="hero-stat">
-                    <span class="stat-label">Receitas no mês atual</span>
+                    <span class="stat-label">Receitas do hotel no mês atual</span>
                     <span class="stat-value income" id="hero-income">R$ 0,00</span>
                 </div>
                 <div class="hero-divider"></div>
                 <div class="hero-stat">
-                    <span class="stat-label">Despesas no mês atual</span>
+                    <span class="stat-label">Despesas do hotel no mês atual</span>
                     <span class="stat-value expense" id="hero-expense">R$ 0,00</span>
                 </div>
                 <div class="hero-chart-icon">📊</div>
@@ -161,7 +163,7 @@
                 <div class="dash-card-header">
                     <div class="dash-card-title">
                         <div class="card-accent"></div>
-                        <span>Todas as Faturas</span>
+                        <span>Cartões Corporativos</span>
                         <button class="eye-btn" onclick="toggleVisibility('faturas-val')" type="button"></button>
                     </div>
                     <button class="card-chevron" onclick="toggleCard('faturas-body',this)">︿</button>
@@ -170,7 +172,7 @@
                     <div class="dash-amount-row">
                         <span id="faturas-val" class="dash-amount">R$ 0,00</span>
                     </div>
-                    <p class="subsection-title">Meus cartões</p>
+                    <p class="subsection-title">Cartões do hotel</p>
                     <div id="cards-list"></div>
                     <button class="manage-btn" onclick="openCardsModal()">Adicionar cartão</button>
                 </div>
@@ -184,7 +186,7 @@
                 </div>
                 <div id="pagar-body" class="dash-card-body expanded">
                     <div class="card-empty-state alone">
-                        <p>No momento você não possui contas a pagar</p>
+                        <p>No momento o hotel não possui contas a pagar</p>
                     </div>
                 </div>
             </div>
@@ -197,7 +199,7 @@
                 </div>
                 <div id="receber-body" class="dash-card-body expanded">
                     <div class="card-empty-state alone">
-                        <p>No momento você não possui contas a receber pendentes</p>
+                        <p>No momento o hotel não possui contas a receber pendentes</p>
                     </div>
                 </div>
             </div>
@@ -526,20 +528,20 @@
 <div id="accounts-modal" class="modal-overlay" style="display:none;" onclick="closeModalOutside(event)">
     <div class="modal-box">
         <div class="modal-header">
-            <h3>Gerenciar Contas</h3>
+            <h3>Gerenciar Contas do Hotel</h3>
             <button class="modal-close" onclick="closeAccountsModal()">x</button>
         </div>
         <form onsubmit="handleAddAccount(event)">
             <div class="form-group">
                 <label>Nome</label>
-                <input type="text" id="account-name" placeholder="Conta principal" required>
+                <input type="text" id="account-name" placeholder="Conta principal do hotel" required>
             </div>
             <div class="form-group">
                 <label>Tipo</label>
                 <select id="account-type" required>
                     <option value="CHECKING">Conta corrente</option>
                     <option value="SAVINGS">Poupança</option>
-                    <option value="CASH">Dinheiro</option>
+                    <option value="CASH">Caixa do hotel</option>
                     <option value="INVESTMENT">Investimento</option>
                 </select>
             </div>
@@ -559,13 +561,13 @@
 <div id="cards-modal" class="modal-overlay" style="display:none;" onclick="closeModalOutside(event)">
     <div class="modal-box">
         <div class="modal-header">
-            <h3>Adicionar Cartão</h3>
+            <h3>Adicionar Cartão Corporativo</h3>
             <button class="modal-close" onclick="closeCardsModal()">x</button>
         </div>
         <form onsubmit="handleAddCard(event)">
             <div class="form-group">
                 <label>Nome do cartão</label>
-                <input type="text" id="card-name" placeholder="Nubank, Inter..." required>
+                <input type="text" id="card-name" placeholder="Cartão corporativo do hotel" required>
             </div>
             <div class="form-group">
                 <label>Limite</label>
@@ -615,6 +617,7 @@
     </div>
 </div>
 
-<script src="app.js?v=20260622-3"></script>
+<script src="ui-shim.js?v=20260921-1"></script>
+<script src="app.js?v=20260921-1"></script>
 </body>
 </html>
