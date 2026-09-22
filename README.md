@@ -71,3 +71,7 @@ Framework CSS que acelera a criação de interfaces responsivas e organizadas, r
 PostgreSQL
 Banco de dados relacional robusto, adequado para armazenar dados financeiros estruturados com segurança e consistência.
 
+---
+
+Documento das melhorias sugeridas pela Luana (dona do Hotel)
+[Levantamento_Alteracoes_Hotel_Bella_Julia.pdf](https://github.com/user-attachments/files/32492303/Levantamento_Alteracoes_Hotel_Bella_Julia.pdf)
