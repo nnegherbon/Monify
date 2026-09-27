@@ -29,7 +29,6 @@
                     <li><span class="feat-icon">◈</span> Fluxo de caixa do hotel em tempo real</li>
                     <li><span class="feat-icon">◈</span> Relatórios para decisões estratégicas</li>
                 </ul>
-                <p style="margin-top:1.5rem;font-size:0.72rem;color:rgba(255,255,255,0.35);">Ambiente de demonstração · use recepcao@hotelbellajulia.com.br / demo123</p>
             </div>
         </div>
         <div class="auth-right">
@@ -99,7 +98,6 @@
                         <span id="profile-user-email"></span>
                     </div>
                     <button onclick="openProfileModal()">Configurações</button>
-                    <button onclick="if(confirm('Restaurar os dados de demonstração? Isso apaga tudo que você adicionou.')){window.__resetMockDb && window.__resetMockDb(); location.reload();}">Restaurar dados de demonstração</button>
                     <button onclick="logout()">Logout</button>
                 </div>
             </div>
@@ -138,7 +136,10 @@
             </div>
         </div>
 
-        <div class="dashboard-grid">
+        <div class="dashboard-toolbar">
+            <button class="link-btn" onclick="openCustomizeCardsModal()" type="button">⚙ Personalizar cards</button>
+        </div>
+        <div class="dashboard-grid" id="dashboard-grid">
             <!-- Saldo Geral -->
             <div class="dash-card" id="card-saldo">
                 <div class="dash-card-header">
@@ -179,7 +180,7 @@
             </div>
 
             <!-- Contas a pagar -->
-            <div class="dash-card">
+            <div class="dash-card" id="card-pagar">
                 <div class="dash-card-header">
                     <div class="dash-card-title"><span>Contas a pagar</span></div>
                     <button class="card-chevron" onclick="toggleCard('pagar-body',this)">︿</button>
@@ -192,7 +193,7 @@
             </div>
 
             <!-- Contas a receber -->
-            <div class="dash-card">
+            <div class="dash-card" id="card-receber">
                 <div class="dash-card-header">
                     <div class="dash-card-title"><span>Contas a receber</span></div>
                     <button class="card-chevron" onclick="toggleCard('receber-body',this)">︿</button>
@@ -205,7 +206,7 @@
             </div>
 
             <!-- Maiores gastos -->
-            <div class="dash-card">
+            <div class="dash-card" id="card-gastos">
                 <div class="dash-card-header">
                     <div class="dash-card-title"><span>Maiores gastos do mês atual</span></div>
                     <div style="display:flex;gap:0.4rem;align-items:center;">
@@ -229,7 +230,7 @@
             </div>
 
             <!-- Limites -->
-            <div class="dash-card">
+            <div class="dash-card" id="card-limites">
                 <div class="dash-card-header">
                     <div class="dash-card-title"><span id="dashboard-limits-title">Limites de gastos</span></div>
                     <button class="card-chevron" onclick="toggleCard('limites-body',this)">︿</button>
@@ -334,12 +335,13 @@
             <!-- Categorias tab -->
             <div id="rel-categorias" class="page-tab-content active">
                 <div class="rel-toolbar">
-                    <button id="rel-filter-button" class="rel-filter-button" onclick="openReportFiltersModal()" type="button">Filtros <span id="rel-filter-count"></span></button>
+                    <button id="rel-filter-button" class="rel-filter-button" onclick="openReportFiltersModal()" type="button">🔎 Filtros <span id="rel-filter-count"></span></button>
                     <div class="report-view-tabs" aria-label="Visualização do relatório">
                         <button class="report-view-tab active" onclick="switchRelView('categories',this)" type="button">Categorias</button>
                         <button class="report-view-tab" onclick="switchRelView('evolution',this)" type="button">Evolução</button>
                     </div>
                 </div>
+                <p class="rel-filter-hint">Os filtros selecionados aqui valem para as telas de Lançamentos e Relatórios.</p>
 
                 <div id="rel-cat-content">
                     <div class="page-empty-state">
@@ -379,6 +381,21 @@
                     <span id="lim-month-label">Maio 2026</span>
                     <button class="month-btn" onclick="changeMonth(1,'lim')">›</button>
                 </div>
+                <button class="filter-btn" onclick="openLimitHistoryPanel()" type="button">Histórico ▾</button>
+            </div>
+
+            <div id="lim-history-panel" class="lim-history-panel" style="display:none;">
+                <div class="lim-history-controls">
+                    <select id="lim-history-category"></select>
+                    <select id="lim-history-range">
+                        <option value="1">Último mês</option>
+                        <option value="3" selected>Últimos 3 meses</option>
+                        <option value="6">Últimos 6 meses</option>
+                    </select>
+                    <button class="btn btn-primary-dark compact-action" type="button" onclick="renderLimitHistory()">Consultar</button>
+                    <button class="modal-close" type="button" onclick="closeLimitHistoryPanel()">✕</button>
+                </div>
+                <div id="lim-history-result"></div>
             </div>
 
             <div id="lim-categorias" class="page-tab-content active">
@@ -412,6 +429,7 @@
             <div class="form-group">
                 <label>Categoria</label>
                 <select id="q-category"></select>
+                <button type="button" class="link-btn" style="margin-top:0.4rem;" onclick="openNewCategoryModal('quick')">+ Criar nova categoria</button>
             </div>
             <div class="form-group">
                 <label>Periodicidade</label>
@@ -474,6 +492,13 @@
         </div>
         <form onsubmit="handleAddLimit(event)">
             <div class="form-group">
+                <label>Abrangência do limite</label>
+                <select id="lim-scope" onchange="toggleLimitScope()">
+                    <option value="CATEGORY">Por categoria</option>
+                    <option value="GENERAL">Geral do mês (todas as categorias)</option>
+                </select>
+            </div>
+            <div class="form-group" id="lim-category-group">
                 <label>Categoria</label>
                 <select id="lim-category" required></select>
             </div>
@@ -497,7 +522,50 @@
     </div>
 </div>
 
-<!-- ===== REPORT FILTERS MODAL ===== -->
+<!-- ===== NEW CATEGORY MODAL ===== -->
+<div id="new-category-modal" class="modal-overlay" style="display:none;" onclick="closeModalOutside(event)">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Nova Categoria</h3>
+            <button class="modal-close" onclick="closeNewCategoryModal()">✕</button>
+        </div>
+        <form onsubmit="handleCreateCategory(event)">
+            <div class="form-group">
+                <label>Nome</label>
+                <input type="text" id="new-category-name" placeholder="Ex: Lavanderia" required>
+            </div>
+            <div class="form-group">
+                <label>Ícone (emoji)</label>
+                <input type="text" id="new-category-icon" placeholder="🏷️" maxlength="4">
+            </div>
+            <div class="form-group">
+                <label>Cor</label>
+                <input type="color" id="new-category-color" value="#B8863B">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeNewCategoryModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary-dark">Criar categoria</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== CUSTOMIZE HOME CARDS MODAL ===== -->
+<div id="customize-cards-modal" class="modal-overlay" style="display:none;" onclick="closeModalOutside(event)">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Personalizar cards da Home</h3>
+            <button class="modal-close" onclick="closeCustomizeCardsModal()">✕</button>
+        </div>
+        <p class="field-hint" style="margin-bottom:0.75rem;">Marque os cards que devem aparecer e use as setas para reordenar.</p>
+        <div id="customize-cards-list"></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="resetCardsLayout()">Restaurar padrão</button>
+            <button type="button" class="btn btn-primary-dark" onclick="saveCardsLayout()">Salvar</button>
+        </div>
+    </div>
+</div>
+
 <div id="report-filters-modal" class="modal-overlay" style="display:none;" onclick="closeModalOutside(event)">
     <div class="modal-box report-filter-modal">
         <div class="modal-header">
@@ -580,6 +648,11 @@
             <div class="form-group">
                 <label>Bandeira</label>
                 <input type="text" id="card-brand" placeholder="Visa, Mastercard..." required>
+            </div>
+            <div class="form-group">
+                <label>Taxa da bandeira em compras a prazo (%)</label>
+                <input type="number" id="card-fee" step="0.01" min="0" max="100" placeholder="Ex: 2,50">
+                <p class="field-hint">Opcional. Usada para estimar o custo de parcelamentos feitos com este cartão.</p>
             </div>
             <div class="modal-footer">
                 <button type="submit" class="btn btn-primary-dark">Adicionar cartão</button>

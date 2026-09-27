@@ -37,6 +37,9 @@ public class CreditCard {
     @Column(nullable = false)
     private String brand;
 
+    @Column(name = "fee_percentage", precision = 5, scale = 2)
+    private BigDecimal feePercentage;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -52,6 +55,9 @@ public class CreditCard {
         }
         if (this.usedAmount == null) {
             this.usedAmount = BigDecimal.ZERO;
+        }
+        if (this.feePercentage == null) {
+            this.feePercentage = BigDecimal.ZERO;
         }
     }
 }

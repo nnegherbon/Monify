@@ -41,6 +41,10 @@ public class SpendingLimit {
     @Enumerated(EnumType.STRING)
     private LimitType limitType;
 
+    @Column(name = "scope")
+    @Enumerated(EnumType.STRING)
+    private Scope scope;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -58,6 +62,9 @@ public class SpendingLimit {
         if (this.limitType == null) {
             this.limitType = LimitType.EXPENSE;
         }
+        if (this.scope == null) {
+            this.scope = Scope.CATEGORY;
+        }
         if (this.usedAmount == null) {
             this.usedAmount = BigDecimal.ZERO;
         }
@@ -71,5 +78,10 @@ public class SpendingLimit {
     public enum LimitType {
         EXPENSE,
         INCOME
+    }
+
+    public enum Scope {
+        CATEGORY,
+        GENERAL
     }
 }

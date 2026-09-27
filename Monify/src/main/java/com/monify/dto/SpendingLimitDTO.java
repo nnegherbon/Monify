@@ -38,6 +38,8 @@ public class SpendingLimitDTO {
 
     private SpendingLimit.LimitType limitType;
 
+    private SpendingLimit.Scope scope;
+
     private BigDecimal spent;
     private BigDecimal remaining;
     private BigDecimal percentage;

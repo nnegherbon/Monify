@@ -43,6 +43,7 @@ public class CreditCardService {
                 .usedAmount(BigDecimal.ZERO)
                 .lastFour(dto.getLastFour())
                 .brand(dto.getBrand().trim())
+                .feePercentage(dto.getFeePercentage() != null ? dto.getFeePercentage() : BigDecimal.ZERO)
                 .build();
 
         return toDTO(creditCardRepository.save(card));
@@ -80,6 +81,7 @@ public class CreditCardService {
                 .usedAmount(card.getUsedAmount() != null ? card.getUsedAmount() : BigDecimal.ZERO)
                 .lastFour(card.getLastFour())
                 .brand(card.getBrand())
+                .feePercentage(card.getFeePercentage() != null ? card.getFeePercentage() : BigDecimal.ZERO)
                 .build();
     }
 }

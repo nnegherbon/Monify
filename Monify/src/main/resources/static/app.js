@@ -300,6 +300,116 @@ async function loadDashboard() {
     renderPendingReceivables();
     renderGastosCard();
     renderLimitesCard();
+    applyCardsLayout();
+}
+
+// ===== PERSONALIZAÇÃO DOS CARDS DA HOME =====
+const HOME_CARD_DEFS = [
+    { id: 'card-saldo', label: 'Saldo Geral' },
+    { id: 'card-faturas', label: 'Cartões Corporativos' },
+    { id: 'card-pagar', label: 'Contas a pagar' },
+    { id: 'card-receber', label: 'Contas a receber' },
+    { id: 'card-gastos', label: 'Maiores gastos do mês' },
+    { id: 'card-limites', label: 'Limites de gastos' }
+];
+
+function homeLayoutStorageKey() {
+    return `hbj_home_layout_${currentUser ? currentUser.id : 'anon'}`;
+}
+
+function getHomeLayout() {
+    try {
+        const raw = localStorage.getItem(homeLayoutStorageKey());
+        if (!raw) return defaultHomeLayout();
+        const parsed = JSON.parse(raw);
+        const validIds = new Set(HOME_CARD_DEFS.map(c => c.id));
+        const order = Array.isArray(parsed.order) ? parsed.order.filter(id => validIds.has(id)) : [];
+        HOME_CARD_DEFS.forEach(c => { if (!order.includes(c.id)) order.push(c.id); });
+        const hidden = Array.isArray(parsed.hidden) ? parsed.hidden.filter(id => validIds.has(id)) : [];
+        return { order, hidden };
+    } catch (e) {
+        return defaultHomeLayout();
+    }
+}
+
+function defaultHomeLayout() {
+    return { order: HOME_CARD_DEFS.map(c => c.id), hidden: [] };
+}
+
+function saveHomeLayout(layout) {
+    try { localStorage.setItem(homeLayoutStorageKey(), JSON.stringify(layout)); } catch (e) { /* ignore */ }
+}
+
+function applyCardsLayout() {
+    const grid = document.getElementById('dashboard-grid');
+    if (!grid) return;
+    const layout = getHomeLayout();
+    layout.order.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.display = layout.hidden.includes(id) ? 'none' : '';
+        grid.appendChild(el);
+    });
+}
+
+function openCustomizeCardsModal() {
+    renderCustomizeCardsList();
+    document.getElementById('customize-cards-modal').style.display = 'flex';
+}
+
+function closeCustomizeCardsModal() {
+    document.getElementById('customize-cards-modal').style.display = 'none';
+}
+
+function renderCustomizeCardsList() {
+    const list = document.getElementById('customize-cards-list');
+    if (!list) return;
+    const layout = getHomeLayout();
+    list.innerHTML = layout.order.map((id, index) => {
+        const def = HOME_CARD_DEFS.find(c => c.id === id);
+        if (!def) return '';
+        const checked = !layout.hidden.includes(id) ? 'checked' : '';
+        const isFirst = index === 0;
+        const isLast = index === layout.order.length - 1;
+        return `<div class="customize-card-item" data-card-id="${id}">
+            <label><input type="checkbox" ${checked} onchange="toggleCardVisibilityInModal('${id}')"> ${escapeHtml(def.label)}</label>
+            <div class="cc-move-btns">
+                <button type="button" ${isFirst ? 'disabled' : ''} onclick="moveCardInModal('${id}',-1)">↑</button>
+                <button type="button" ${isLast ? 'disabled' : ''} onclick="moveCardInModal('${id}',1)">↓</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function toggleCardVisibilityInModal(id) {
+    const layout = getHomeLayout();
+    if (layout.hidden.includes(id)) {
+        layout.hidden = layout.hidden.filter(x => x !== id);
+    } else {
+        layout.hidden.push(id);
+    }
+    saveHomeLayout(layout);
+}
+
+function moveCardInModal(id, direction) {
+    const layout = getHomeLayout();
+    const index = layout.order.indexOf(id);
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= layout.order.length) return;
+    [layout.order[index], layout.order[newIndex]] = [layout.order[newIndex], layout.order[index]];
+    saveHomeLayout(layout);
+    renderCustomizeCardsList();
+}
+
+function saveCardsLayout() {
+    applyCardsLayout();
+    closeCustomizeCardsModal();
+}
+
+function resetCardsLayout() {
+    saveHomeLayout(defaultHomeLayout());
+    renderCustomizeCardsList();
+    applyCardsLayout();
 }
 
 function setElText(id, text) {
@@ -493,6 +603,8 @@ async function handleAddCard(e) {
     const brand = document.getElementById('card-brand').value.trim();
     const limitAmount = parseFloat(document.getElementById('card-limit').value || '0');
     const lastFour = document.getElementById('card-last-four').value.trim();
+    const feeInput = document.getElementById('card-fee').value;
+    const feePercentage = feeInput ? parseFloat(feeInput) : 0;
     if (!name || !brand || !/^\d{4}$/.test(lastFour) || Number.isNaN(limitAmount)) {
         alert('Preencha todos os campos. O final precisa ter 4 digitos.');
         return;
@@ -502,7 +614,7 @@ async function handleAddCard(e) {
         const res = await fetch(`${API_BASE_URL}/users/${currentUser.id}/cards`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, brand, limitAmount, lastFour })
+            body: JSON.stringify({ name, brand, limitAmount, lastFour, feePercentage })
         });
         if (!res.ok) throw await res.json();
         e.target.reset();
@@ -635,11 +747,23 @@ function renderPendingPayables() {
         return;
     }
 
+    const DUE_SOON_DAYS = 3;
+    const dueSoonLimit = new Date(today);
+    dueSoonLimit.setDate(dueSoonLimit.getDate() + DUE_SOON_DAYS);
+
     const overdueCount = pending.filter(transaction => parseLocalDate(transaction.date) < today).length;
-    const banner = overdueCount
+    const dueSoonCount = pending.filter(transaction => {
+        const d = parseLocalDate(transaction.date);
+        return d >= today && d <= dueSoonLimit;
+    }).length;
+
+    const overdueBanner = overdueCount
         ? `<div class="pagar-overdue-banner">Contas a pagar atrasadas (${overdueCount})</div>`
         : '';
-    body.innerHTML = banner + pending.map(transaction => {
+    const dueSoonBanner = dueSoonCount
+        ? `<div class="pagar-due-soon-banner">⏰ Vencendo nos próximos ${DUE_SOON_DAYS} dias (${dueSoonCount})</div>`
+        : '';
+    body.innerHTML = overdueBanner + dueSoonBanner + pending.map(transaction => {
         const overdue = parseLocalDate(transaction.date) < today;
         return buildPendingItem(transaction, overdue, 'Pagar');
     }).join('') + '<button class="manage-btn" onclick="openQuickAdd(\'EXPENSE\',true)">Cadastrar conta a pagar</button>';
@@ -769,15 +893,19 @@ function renderLimitesCard() {
         body.innerHTML = '<div class="card-empty-state alone"><p>Você não possui limites configurados</p></div><button class="manage-btn" onclick="showSection(\'limites\',{target:document.querySelectorAll(\'.nav-btn\')[3]})">Definir limites</button>';
         return;
     }
-    body.innerHTML = limits.map(l => {
+    const sorted = [...limits].sort((a, b) => (a.scope === 'GENERAL' ? -1 : 0) - (b.scope === 'GENERAL' ? -1 : 0));
+    body.innerHTML = sorted.map(l => {
         const used = Number(l.usedAmount ?? l.spent ?? 0);
         const amount = Number(l.amount || 0);
         const pct = Math.min(Number(l.percentage || 0), 100);
         const fillClass = pct >= 100 ? 'over' : pct >= 75 ? 'warn' : '';
+        const isGeneral = l.scope === 'GENERAL';
         const category = findCategoryByName(l.categoryName);
+        const icon = isGeneral ? '🌐' : (category?.icon || '');
+        const badge = isGeneral ? '<span class="lim-general-badge">Geral</span>' : '';
         return `<div class="lim-item">
             <div class="lim-item-header">
-                <div class="lim-item-name">${escapeHtml(category?.icon || '')} ${escapeHtml(l.categoryName)}</div>
+                <div class="lim-item-name">${escapeHtml(icon)} ${escapeHtml(l.categoryName)}${badge}</div>
                 <div class="lim-item-vals">${formatCurrency(used)} / ${formatCurrency(amount)}</div>
             </div>
             <div class="lim-progress-bar"><div class="lim-progress-fill ${fillClass}" style="width:${pct.toFixed(1)}%"></div></div>
@@ -938,9 +1066,19 @@ function syncInstallmentControls(totalOverride = null) {
     const amount = Number((totalOverride ?? document.getElementById('q-amount')?.value) || 0);
     const preview = document.getElementById('q-installment-preview');
     if (preview) {
-        preview.textContent = isInstallment && count > 1 && amount > 0
-            ? `${count} parcelas de aproximadamente ${formatCurrency(amount / count)}`
-            : 'Informe o valor total e uma quantidade maior que 1.';
+        if (isInstallment && count > 1 && amount > 0) {
+            let text = `${count} parcelas de aproximadamente ${formatCurrency(amount / count)}`;
+            const cardId = Number(origin.split(':')[1]);
+            const card = creditCards.find(c => Number(c.id) === cardId);
+            const fee = Number(card?.feePercentage || 0);
+            if (fee > 0) {
+                const totalWithFee = amount * (1 + fee / 100);
+                text += ` · com a taxa da bandeira (${fee.toFixed(2)}%) o total estimado sobe para ${formatCurrency(totalWithFee)}`;
+            }
+            preview.textContent = text;
+        } else {
+            preview.textContent = 'Informe o valor total e uma quantidade maior que 1.';
+        }
     }
 }
 
@@ -962,7 +1100,52 @@ function populateLancamentoCategoryFilters() {
         return `<label><input type="checkbox" value="${value}" ${selected.has(value) ? 'checked' : ''}> ${escapeHtml(`${category.icon || ''} ${category.name}`.trim())}</label>`;
     }).join('');
     menu.innerHTML = '<p class="dd-group-label">Categorias cadastradas</p>' +
-        (options || '<p class="filter-loading">Nenhuma categoria disponível</p>');
+        (options || '<p class="filter-loading">Nenhuma categoria disponível</p>') +
+        '<button type="button" class="link-btn" style="margin-top:0.5rem;width:100%;" onclick="openNewCategoryModal(\'filter\')">+ Nova categoria</button>';
+}
+
+function openNewCategoryModal(context) {
+    window.__newCategoryContext = context || null;
+    const nameInput = document.getElementById('new-category-name');
+    const iconInput = document.getElementById('new-category-icon');
+    const colorInput = document.getElementById('new-category-color');
+    if (nameInput) nameInput.value = '';
+    if (iconInput) iconInput.value = '';
+    if (colorInput) colorInput.value = '#B8863B';
+    document.getElementById('new-category-modal').style.display = 'flex';
+}
+
+function closeNewCategoryModal() {
+    document.getElementById('new-category-modal').style.display = 'none';
+}
+
+async function handleCreateCategory(event) {
+    event.preventDefault();
+    const name = document.getElementById('new-category-name').value.trim();
+    const icon = document.getElementById('new-category-icon').value.trim() || '🏷️';
+    const color = document.getElementById('new-category-color').value || '#B8863B';
+    if (!name) { alert('Informe um nome para a categoria.'); return; }
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/categories`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, icon, color })
+        });
+        const data = await res.json();
+        if (!res.ok) throw data;
+
+        await loadCategories();
+        closeNewCategoryModal();
+
+        if (window.__newCategoryContext === 'quick') {
+            const sel = document.getElementById('q-category');
+            if (sel) sel.value = data.id;
+        }
+        alert('Categoria criada com sucesso!');
+    } catch (error) {
+        alert('Erro: ' + (error && error.error ? error.error : 'Não foi possível criar a categoria.'));
+    }
 }
 
 document.addEventListener('change', e => {
@@ -973,7 +1156,10 @@ document.addEventListener('change', e => {
     if (e.target && ['q-origin', 'q-card-payment-mode', 'q-installment-count'].includes(e.target.id)) {
         syncInstallmentControls();
     }
-    if (e.target && e.target.closest('.lanc-filters')) renderLancamentos();
+    if (e.target && e.target.closest('.lanc-filters')) {
+        renderLancamentos();
+        syncReportFiltersFromLancCheckboxes();
+    }
 });
 
 document.addEventListener('input', e => {
@@ -1175,6 +1361,30 @@ function clearLancFilters() {
     if (search) search.value = '';
     lancSearchTerm = '';
     renderLancamentos();
+    syncReportFiltersFromLancCheckboxes();
+}
+
+// ===== FILTROS COMPARTILHADOS (Lançamentos <-> Relatórios) =====
+// Os filtros de tipo/categoria são os mesmos nas duas telas: escolher em uma
+// reflete automaticamente na outra.
+function syncLancCheckboxesFromReportFilters() {
+    document.querySelectorAll('#tipo-dd input[type=checkbox]').forEach(cb => {
+        const type = cb.value.replace('type:', '');
+        cb.checked = reportFilters.types.size < 2 && reportFilters.types.has(type);
+    });
+    document.querySelectorAll('#cat-dd input[type=checkbox]').forEach(cb => {
+        const id = Number(cb.value.replace('category:', ''));
+        cb.checked = reportFilters.categoryIds.size > 0 && reportFilters.categoryIds.has(id);
+    });
+}
+
+function syncReportFiltersFromLancCheckboxes() {
+    const checked = Array.from(document.querySelectorAll('.lanc-filters input[type=checkbox]:checked')).map(cb => cb.value);
+    const selectedTypes = checked.filter(value => value.startsWith('type:')).map(value => value.slice(5));
+    const selectedCategories = checked.filter(value => value.startsWith('category:')).map(value => Number(value.slice(9)));
+    reportFilters.types = selectedTypes.length ? new Set(selectedTypes) : new Set(['INCOME', 'EXPENSE']);
+    reportFilters.categoryIds = new Set(selectedCategories);
+    renderReportFilterBadge();
 }
 
 function toggleLancSearch() {
@@ -1314,12 +1524,28 @@ function renderCategoryReport(transactions) {
     ].filter(Boolean).join('');
 
     container.innerHTML = renderReportSummary(transactions) +
+        renderReportLegend(incomes, expenses) +
         `<div class="report-category-grid">${blocks}</div>`;
 
     requestAnimationFrame(() => {
         relChartExpense = createDoughnutChart('rel-chart-exp', expenses);
         relChartIncome = createDoughnutChart('rel-chart-inc', incomes);
     });
+}
+
+function renderReportLegend(incomes, expenses) {
+    if (!incomes.length && !expenses.length) return '';
+    const topIncome = incomes[0];
+    const topExpense = expenses[0];
+    const parts = [];
+    if (topIncome) {
+        parts.push(`entrou ${formatCurrency(topIncome.total)} vindo de <strong>${escapeHtml(topIncome.icon || '')} ${escapeHtml(topIncome.name)}</strong>`);
+    }
+    if (topExpense) {
+        parts.push(`foi gasto ${formatCurrency(topExpense.total)} com <strong>${escapeHtml(topExpense.icon || '')} ${escapeHtml(topExpense.name)}</strong>`);
+    }
+    const sentence = parts.join(' e ');
+    return `<div class="rel-legend">💡 No período selecionado, ${sentence}.</div>`;
 }
 
 function renderCategoryBlock(label, groups, chartId) {
@@ -1474,6 +1700,8 @@ function applyReportFilters() {
     reportFilters.originKeys = !availableOrigins.length || selectedOrigins.length === availableOrigins.length
         ? new Set()
         : new Set(selectedOrigins);
+    syncLancCheckboxesFromReportFilters();
+    renderLancamentos();
     closeReportFiltersModal();
     loadRelatorios();
 }
@@ -1485,6 +1713,8 @@ function clearReportFilters() {
     populateReportFilterOptions();
     document.getElementById('rel-filter-income').checked = true;
     document.getElementById('rel-filter-expense').checked = true;
+    syncLancCheckboxesFromReportFilters();
+    renderLancamentos();
     renderReportFilterBadge();
 }
 
@@ -1741,7 +1971,8 @@ async function renderLimites() {
         return;
     }
 
-    container.innerHTML = limits.map(function(limit) {
+    const sortedLimits = [...limits].sort((a, b) => (a.scope === 'GENERAL' ? -1 : 0) - (b.scope === 'GENERAL' ? -1 : 0));
+    container.innerHTML = sortedLimits.map(function(limit) {
         const used = getLimitUsed(limit);
         const amount = Number(limit.amount || 0);
         const remaining = getLimitRemaining(limit);
@@ -1749,15 +1980,17 @@ async function renderLimites() {
         const percentageLabel = percentage.toFixed(1);
         const fillClass = percentage >= 100 ? 'over' : percentage >= 75 ? 'warn' : '';
         const statusColor = percentage >= 100 ? 'var(--red)' : percentage >= 75 ? '#f59e0b' : 'var(--green)';
+        const isGeneral = limit.scope === 'GENERAL';
         const category = findCategoryByName(limit.categoryName);
-        const categoryColor = category && category.color ? category.color : '#555';
-        const categoryIcon = category && category.icon ? category.icon : 'C';
+        const categoryColor = isGeneral ? 'var(--accent)' : (category && category.color ? category.color : '#555');
+        const categoryIcon = isGeneral ? '🌐' : (category && category.icon ? category.icon : 'C');
+        const badge = isGeneral ? '<span class="lim-general-badge">Geral</span>' : '';
 
         return '<div class="lim-item">' +
             '<div class="lim-item-header">' +
                 '<div class="lim-item-name"><span class="lim-category-icon" style="background:' +
                     escapeHtml(categoryColor) + '">' + escapeHtml(categoryIcon) + '</span>' +
-                    escapeHtml(limit.categoryName) + '</div>' +
+                    escapeHtml(limit.categoryName) + badge + '</div>' +
                 '<div class="lim-item-vals">' + formatCurrency(used) + ' / ' + formatCurrency(amount) + '</div>' +
             '</div>' +
             '<div class="lim-progress-bar"><div class="lim-progress-fill ' + fillClass +
@@ -1795,6 +2028,66 @@ function getLimitRemaining(limit) {
     return Number(limit.remaining ?? Math.max(Number(limit.amount || 0) - getLimitUsed(limit), 0));
 }
 
+// ===== HISTÓRICO DE GASTOS (Etapa 4) =====
+function openLimitHistoryPanel() {
+    const panel = document.getElementById('lim-history-panel');
+    if (!panel) return;
+    populateLimitHistoryCategories();
+    const willShow = panel.style.display === 'none' || !panel.style.display;
+    panel.style.display = willShow ? 'block' : 'none';
+    if (willShow) renderLimitHistory();
+}
+
+function closeLimitHistoryPanel() {
+    const panel = document.getElementById('lim-history-panel');
+    if (panel) panel.style.display = 'none';
+}
+
+function populateLimitHistoryCategories() {
+    const select = document.getElementById('lim-history-category');
+    if (!select) return;
+    const current = select.value;
+    select.innerHTML = '<option value="">Todas as categorias (gasto total)</option>' +
+        categories.map(function(c) {
+            return '<option value="' + c.id + '">' + escapeHtml(((c.icon || '') + ' ' + c.name).trim()) + '</option>';
+        }).join('');
+    if (current) select.value = current;
+}
+
+async function renderLimitHistory() {
+    const result = document.getElementById('lim-history-result');
+    if (!result) return;
+    await fetchAllTransactions();
+
+    const months = Number(document.getElementById('lim-history-range')?.value || 3);
+    const categoryId = document.getElementById('lim-history-category')?.value || '';
+    const now = new Date();
+    const buckets = [];
+    for (let i = months - 1; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        buckets.push({ year: d.getFullYear(), month: d.getMonth(), label: MONTHS[d.getMonth()] + ' ' + d.getFullYear(), total: 0 });
+    }
+
+    allTransactions
+        .filter(function(t) { return t.type === 'EXPENSE' && isTransactionCompleted(t); })
+        .filter(function(t) { return !categoryId || Number(t.categoryId) === Number(categoryId); })
+        .forEach(function(t) {
+            const d = parseLocalDate(t.date);
+            const bucket = buckets.find(function(b) { return b.year === d.getFullYear() && b.month === d.getMonth(); });
+            if (bucket) bucket.total += Number(t.amount || 0);
+        });
+
+    const grandTotal = buckets.reduce(function(sum, b) { return sum + b.total; }, 0);
+    const maxTotal = Math.max.apply(null, buckets.map(function(b) { return b.total; }).concat([1]));
+
+    result.innerHTML = buckets.map(function(b) {
+        const pct = maxTotal > 0 ? (b.total / maxTotal * 100) : 0;
+        return '<div class="lim-history-row"><span>' + escapeHtml(b.label) + '</span><strong>' + formatCurrency(b.total) + '</strong></div>' +
+            '<div class="lim-history-bar-track"><div class="lim-history-bar-fill" style="width:' + pct.toFixed(1) + '%"></div></div>';
+    }).join('') + '<div class="lim-history-row" style="margin-top:0.5rem;border-top:1px solid #ddd;padding-top:0.5rem;">' +
+        '<span><strong>Total do período</strong></span><strong>' + formatCurrency(grandTotal) + '</strong></div>';
+}
+
 function openLimitModal(limitId = null) {
     editingLimitId = limitId;
     const limit = limitId == null ? null : limits.find(function(item) { return item.id === limitId; });
@@ -1805,6 +2098,10 @@ function openLimitModal(limitId = null) {
     const monthInput = document.getElementById('lim-month');
     monthInput.value = getMonthKey(selectedMonth);
     populateLimitCategories(limit ? limit.categoryName : '');
+
+    const scopeSelect = document.getElementById('lim-scope');
+    if (scopeSelect) scopeSelect.value = (limit && limit.scope === 'GENERAL') ? 'GENERAL' : 'CATEGORY';
+    toggleLimitScope();
 
     document.getElementById('limit-modal-title').textContent =
         limit ? 'Editar limite de gastos' : 'Adicionar limite de gastos';
@@ -1818,6 +2115,15 @@ function openLimitModal(limitId = null) {
     }
 
     document.getElementById('limit-modal').style.display = 'flex';
+}
+
+function toggleLimitScope() {
+    const scope = document.getElementById('lim-scope')?.value || 'CATEGORY';
+    const categoryGroup = document.getElementById('lim-category-group');
+    const categorySelect = document.getElementById('lim-category');
+    const isGeneral = scope === 'GENERAL';
+    if (categoryGroup) categoryGroup.hidden = isGeneral;
+    if (categorySelect) categorySelect.required = !isGeneral;
 }
 
 function closeLimitModal() {
@@ -1843,13 +2149,23 @@ function populateLimitCategories(selectedName = '') {
 
 async function handleAddLimit(event) {
     event.preventDefault();
-    const categoryId = Number(document.getElementById('lim-category').value);
-    const category = categories.find(function(item) { return item.id === categoryId; });
+    const scope = document.getElementById('lim-scope')?.value || 'CATEGORY';
+    const isGeneral = scope === 'GENERAL';
     const amount = parseFloat(document.getElementById('lim-value').value);
     const usedAmount = parseFloat(document.getElementById('lim-used-value').value || '0');
     const month = document.getElementById('lim-month').value;
 
-    if (!category || !Number.isFinite(amount) || !Number.isFinite(usedAmount) || !month) {
+    let categoryKey = 'geral';
+    let categoryName = 'Geral (mês todo)';
+    if (!isGeneral) {
+        const categoryId = Number(document.getElementById('lim-category').value);
+        const category = categories.find(function(item) { return item.id === categoryId; });
+        if (!category) { alert('Selecione uma categoria.'); return; }
+        categoryKey = normalizeText(category.name).replace(/\s+/g, '-');
+        categoryName = category.name;
+    }
+
+    if (!Number.isFinite(amount) || !Number.isFinite(usedAmount) || !month) {
         alert('Preencha todos os campos do limite.');
         return;
     }
@@ -1866,12 +2182,13 @@ async function handleAddLimit(event) {
             method: editingLimitId == null ? 'POST' : 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                categoryKey: normalizeText(category.name).replace(/\s+/g, '-'),
-                categoryName: category.name,
+                categoryKey: categoryKey,
+                categoryName: categoryName,
                 amount: amount,
                 usedAmount: usedAmount,
                 month: month,
-                limitType: 'EXPENSE'
+                limitType: 'EXPENSE',
+                scope: scope
             })
         });
         if (!response.ok) throw await response.json();

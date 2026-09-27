@@ -31,4 +31,6 @@ public class CreditCardDTO {
 
     @NotBlank(message = "Bandeira e obrigatoria")
     private String brand;
+
+    private BigDecimal feePercentage;
 }

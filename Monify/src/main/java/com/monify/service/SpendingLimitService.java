@@ -22,6 +22,8 @@ import java.util.stream.Collectors;
 public class SpendingLimitService {
 
     private static final Pattern DIACRITICS = Pattern.compile("\\p{M}+");
+    private static final String GENERAL_CATEGORY_KEY = "geral";
+    private static final String GENERAL_CATEGORY_NAME = "Geral (mês todo)";
 
     private final SpendingLimitRepository spendingLimitRepository;
     private final UserService userService;
@@ -48,23 +50,36 @@ public class SpendingLimitService {
         SpendingLimit.LimitType limitType = dto.getLimitType() != null
                 ? dto.getLimitType()
                 : SpendingLimit.LimitType.EXPENSE;
-        Category category = getCategory(dto);
-        String categoryKey = normalizeKey(category.getName());
+        SpendingLimit.Scope scope = dto.getScope() != null ? dto.getScope() : SpendingLimit.Scope.CATEGORY;
+
+        String categoryKey;
+        String categoryName;
+        if (scope == SpendingLimit.Scope.GENERAL) {
+            categoryKey = GENERAL_CATEGORY_KEY;
+            categoryName = GENERAL_CATEGORY_NAME;
+        } else {
+            Category category = getCategory(dto);
+            categoryKey = normalizeKey(category.getName());
+            categoryName = category.getName();
+        }
 
         spendingLimitRepository
                 .findByUserIdAndCategoryKeyAndMonthAndLimitType(userId, categoryKey, dto.getMonth(), limitType)
                 .ifPresent(existing -> {
-                    throw new RuntimeException("Limite ja cadastrado para esta categoria e mes");
+                    throw new RuntimeException(scope == SpendingLimit.Scope.GENERAL
+                            ? "Ja existe um limite geral cadastrado para este mes"
+                            : "Limite ja cadastrado para esta categoria e mes");
                 });
 
         SpendingLimit limit = SpendingLimit.builder()
                 .user(user)
                 .categoryKey(categoryKey)
-                .categoryName(category.getName())
+                .categoryName(categoryName)
                 .month(dto.getMonth())
                 .limitType(limitType)
+                .scope(scope)
                 .build();
-        applyValues(limit, dto, category, limitType);
+        applyValues(limit, dto, categoryKey, categoryName, limitType, scope);
 
         return toDTO(spendingLimitRepository.save(limit));
     }
@@ -74,17 +89,29 @@ public class SpendingLimitService {
         SpendingLimit.LimitType limitType = dto.getLimitType() != null
                 ? dto.getLimitType()
                 : limit.getLimitType();
-        Category category = getCategory(dto);
-        String categoryKey = normalizeKey(category.getName());
+        SpendingLimit.Scope scope = dto.getScope() != null ? dto.getScope() : limit.getScope();
+
+        String categoryKey;
+        String categoryName;
+        if (scope == SpendingLimit.Scope.GENERAL) {
+            categoryKey = GENERAL_CATEGORY_KEY;
+            categoryName = GENERAL_CATEGORY_NAME;
+        } else {
+            Category category = getCategory(dto);
+            categoryKey = normalizeKey(category.getName());
+            categoryName = category.getName();
+        }
 
         spendingLimitRepository
                 .findByUserIdAndCategoryKeyAndMonthAndLimitType(userId, categoryKey, dto.getMonth(), limitType)
                 .filter(existing -> !existing.getId().equals(id))
                 .ifPresent(existing -> {
-                    throw new RuntimeException("Limite ja cadastrado para esta categoria e mes");
+                    throw new RuntimeException(scope == SpendingLimit.Scope.GENERAL
+                            ? "Ja existe um limite geral cadastrado para este mes"
+                            : "Limite ja cadastrado para esta categoria e mes");
                 });
 
-        applyValues(limit, dto, category, limitType);
+        applyValues(limit, dto, categoryKey, categoryName, limitType, scope);
         return toDTO(spendingLimitRepository.save(limit));
     }
 
@@ -95,8 +122,10 @@ public class SpendingLimitService {
     private void applyValues(
             SpendingLimit limit,
             SpendingLimitDTO dto,
-            Category category,
-            SpendingLimit.LimitType limitType) {
+            String categoryKey,
+            String categoryName,
+            SpendingLimit.LimitType limitType,
+            SpendingLimit.Scope scope) {
         BigDecimal amount = dto.getAmount();
         BigDecimal usedAmount = dto.getUsedAmount() != null ? dto.getUsedAmount() : BigDecimal.ZERO;
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
@@ -109,12 +138,13 @@ public class SpendingLimitService {
             throw new RuntimeException("Valor utilizado nao pode ultrapassar o limite");
         }
 
-        limit.setCategoryKey(normalizeKey(category.getName()));
-        limit.setCategoryName(category.getName());
+        limit.setCategoryKey(categoryKey);
+        limit.setCategoryName(categoryName);
         limit.setMonth(dto.getMonth());
         limit.setAmount(amount);
         limit.setUsedAmount(usedAmount);
         limit.setLimitType(limitType != null ? limitType : SpendingLimit.LimitType.EXPENSE);
+        limit.setScope(scope != null ? scope : SpendingLimit.Scope.CATEGORY);
     }
 
     private SpendingLimit getOwnedLimit(Long userId, Long id) {
@@ -163,6 +193,9 @@ public class SpendingLimitService {
                 .limitType(limit.getLimitType() != null
                         ? limit.getLimitType()
                         : SpendingLimit.LimitType.EXPENSE)
+                .scope(limit.getScope() != null
+                        ? limit.getScope()
+                        : SpendingLimit.Scope.CATEGORY)
                 .spent(usedAmount)
                 .remaining(remaining)
                 .percentage(percentage)
