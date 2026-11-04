@@ -1,0 +1,188 @@
+# Pipeline CI/CD do Monify
+#
+#  1. test   -> compila e roda os testes (JUnit + H2) com Maven
+#  2. docker -> constrói a imagem Docker e faz um smoke test no container
+#  3. deploy -> (só na main) dispara o deploy no Render e verifica se a app subiu
+#
+# Secrets necessários (Settings > Secrets and variables > Actions):
+#  - RENDER_DEPLOY_HOOK_URL  (obrigatório)  Deploy Hook do serviço no Render
+#  - RENDER_API_KEY          (opcional)     permite acompanhar o status do deploy
+#  - RENDER_SERVICE_ID       (opcional)     id do serviço (srv-...), usado com a API key
+# Variável (aba "Variables"):
+#  - RENDER_APP_URL          (opcional)     ex.: https://monify-app.onrender.com
+
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Build e testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: Monify
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+          cache-dependency-path: Monify/pom.xml
+
+      - name: Compilar e rodar testes
+        run: mvn -B -ntp clean verify
+
+      - name: Resumo dos testes
+        if: always()
+        run: |
+          shopt -s nullglob
+          files=(target/surefire-reports/TEST-*.xml)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "Nenhum relatório de teste encontrado." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "### Resultado dos testes"
+            echo "| Classe | Testes | Falhas | Erros | Ignorados |"
+            echo "|---|---|---|---|---|"
+            for f in "${files[@]}"; do
+              line=$(grep -o '<testsuite [^>]*>' "$f" | head -1)
+              get() { echo "$line" | sed -n "s/.* $1=\"\([^\"]*\)\".*/\1/p"; }
+              echo "| $(get name) | $(get tests) | $(get failures) | $(get errors) | $(get skipped) |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicar relatórios de teste
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorios-de-teste
+          path: Monify/target/surefire-reports/
+          if-no-files-found: ignore
+
+      - name: Publicar o .jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: monify-jar
+          path: Monify/target/monify-app-*.jar
+
+  docker:
+    name: Imagem Docker e smoke test
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: Monify
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Construir imagem
+        run: docker build -t monify-app:ci .
+
+      - name: Subir container (perfil local, banco H2 em memória)
+        run: |
+          docker run -d --name monify -p 8080:8080 \
+            -e SPRING_PROFILES_ACTIVE=local \
+            monify-app:ci
+
+      - name: Smoke test
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/api/categories > /tmp/categorias.json; then
+              echo "API respondeu após ${i} tentativa(s)."
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS -o /dev/null http://localhost:8080/        # frontend estático
+          curl -fsS http://localhost:8080/api/categories | grep -q '"name"' \
+            || { echo "A API não retornou as categorias padrão"; exit 1; }
+          echo "Smoke test OK"
+
+      - name: Logs do container
+        if: always()
+        run: docker logs monify || true
+
+  deploy:
+    name: Deploy no Render
+    needs: [test, docker]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: production
+      url: ${{ vars.RENDER_APP_URL }}
+    steps:
+      - name: Disparar deploy
+        id: hook
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::Secret RENDER_DEPLOY_HOOK_URL não configurado."
+            exit 1
+          fi
+          resp=$(curl -fsS -X POST "$HOOK")
+          deploy_id=$(echo "$resp" | jq -r '.deploy.id // empty')
+          echo "Deploy disparado: ${deploy_id:-sem id}"
+          echo "deploy_id=$deploy_id" >> "$GITHUB_OUTPUT"
+
+      - name: Acompanhar deploy
+        env:
+          API_KEY: ${{ secrets.RENDER_API_KEY }}
+          SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+          DEPLOY_ID: ${{ steps.hook.outputs.deploy_id }}
+        run: |
+          if [ -z "$API_KEY" ] || [ -z "$SERVICE_ID" ] || [ -z "$DEPLOY_ID" ]; then
+            echo "RENDER_API_KEY/RENDER_SERVICE_ID não configurados; pulando o acompanhamento."
+            exit 0
+          fi
+          for i in $(seq 1 90); do
+            status=$(curl -fsS -H "Authorization: Bearer $API_KEY" \
+              "https://api.render.com/v1/services/$SERVICE_ID/deploys/$DEPLOY_ID" | jq -r '.status')
+            echo "Status: $status"
+            case "$status" in
+              live) echo "Deploy concluído."; exit 0 ;;
+              build_failed|update_failed|pre_deploy_failed|canceled|deactivated)
+                echo "::error::Deploy terminou com status $status"; exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "::error::Tempo esgotado esperando o deploy."; exit 1
+
+      - name: Verificar aplicação no ar
+        env:
+          APP_URL: ${{ vars.RENDER_APP_URL }}
+        run: |
+          if [ -z "$APP_URL" ]; then
+            echo "Variável RENDER_APP_URL não configurada; pulando a verificação."
+            exit 0
+          fi
+          # O plano free do Render "dorme"; a primeira requisição pode levar ~1 min.
+          for i in $(seq 1 30); do
+            if curl -fsS --max-time 30 "$APP_URL/api/categories" > /dev/null; then
+              echo "Aplicação respondendo em $APP_URL"; exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::A aplicação não respondeu em $APP_URL"; exit 1

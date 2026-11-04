@@ -71,3 +71,22 @@ Framework CSS que acelera a criação de interfaces responsivas e organizadas, r
 PostgreSQL
 Banco de dados relacional robusto, adequado para armazenar dados financeiros estruturados com segurança e consistência.
 
+
+**Pipeline CI/CD (GitHub Actions + Render)**
+
+[![CI/CD](https://github.com/nnegherbon/Monify/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/nnegherbon/Monify/actions/workflows/ci-cd.yml)
+
+O arquivo `.github/workflows/ci-cd.yml` roda a cada push e pull request na `main`:
+
+1. **Build e testes** – `mvn verify` com Java 17; os testes usam H2 em memória (perfil `test`). Os relatórios e o `.jar` ficam como artefatos da execução.
+2. **Imagem Docker e smoke test** – constrói a imagem do `Dockerfile`, sobe o container com H2 e confere se `/` e `/api/categories` respondem.
+3. **Deploy no Render** – só em push na `main` e só se as etapas anteriores passarem: chama o Deploy Hook do Render e verifica se a aplicação publicada responde.
+
+Configuração (uma vez):
+
+1. No Render, crie o serviço pelo Blueprint (`render.yaml` na raiz) e preencha `DB_URL`, `DB_USERNAME` e `DB_PASSWORD` do PostgreSQL.
+2. No serviço do Render, em *Settings > Deploy Hook*, copie a URL.
+3. No GitHub, em *Settings > Secrets and variables > Actions*:
+   - Secret `RENDER_DEPLOY_HOOK_URL` com a URL do passo 2 (obrigatório).
+   - Secrets `RENDER_API_KEY` e `RENDER_SERVICE_ID` (opcionais, para a pipeline acompanhar o status do deploy).
+   - Variable `RENDER_APP_URL`, por exemplo `https://monify-app.onrender.com` (opcional, para o teste pós-deploy).

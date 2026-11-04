@@ -1,10 +1,16 @@
+# Blueprint do Render. O código fica na pasta Monify/ e o deploy é disparado
+# pela pipeline do GitHub Actions (.github/workflows/ci-cd.yml) somente depois
+# que os testes e o smoke test passam; por isso o autodeploy está desligado.
 services:
   - type: web
     name: monify-app
     runtime: docker
     plan: free
+    rootDir: Monify
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /
-    autoDeployTrigger: commit
+    autoDeployTrigger: "off"
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
