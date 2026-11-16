@@ -107,16 +107,24 @@ jobs:
 
       - name: Smoke test
         run: |
+          # O Tomcat aceita requisições antes do DataInitializer terminar de
+          # criar as categorias padrão; por isso espera até elas aparecerem.
+          ok=false
           for i in $(seq 1 60); do
-            if curl -fsS http://localhost:8080/api/categories > /tmp/categorias.json; then
-              echo "API respondeu após ${i} tentativa(s)."
+            if curl -fsS http://localhost:8080/api/categories > /tmp/categorias.json 2>/dev/null \
+               && grep -q '"name"' /tmp/categorias.json; then
+              echo "API retornou as categorias após ${i} tentativa(s)."
+              ok=true
               break
             fi
             sleep 2
           done
+          if [ "$ok" != true ]; then
+            echo "A API não retornou as categorias padrão. Última resposta:"
+            cat /tmp/categorias.json 2>/dev/null || true
+            exit 1
+          fi
           curl -fsS -o /dev/null http://localhost:8080/        # frontend estático
-          curl -fsS http://localhost:8080/api/categories | grep -q '"name"' \
-            || { echo "A API não retornou as categorias padrão"; exit 1; }
           echo "Smoke test OK"
 
       - name: Logs do container
