@@ -86,7 +86,7 @@ public class UserController {
     public ResponseEntity<?> logoutUser(HttpServletRequest request) {
         authService.revoke(AuthInterceptor.extractToken(request));
         Map<String, String> response = new HashMap<>();
-        response.put("message", "Sessao encerrada");
+        response.put("message", "Sessão encerrada");
         return ResponseEntity.ok(response);
     }
 

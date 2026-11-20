@@ -118,7 +118,7 @@ class SpendingLimitServiceTest {
         RuntimeException error = assertThrows(RuntimeException.class, () ->
                 spendingLimitService.createLimit(user.getId(), limitDto("100.00")));
 
-        assertEquals("Limite ja cadastrado para esta categoria e mes", error.getMessage());
+        assertEquals("Limite já cadastrado para esta categoria e mês", error.getMessage());
     }
 
     private void saveExpense(String amount, String date, Transaction.TransactionStatus status, Category expenseCategory) {

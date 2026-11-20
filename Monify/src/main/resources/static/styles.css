@@ -405,7 +405,8 @@ body {
 .account-item,
 .modal-list-item {
     display:flex; align-items:center; gap:0.75rem;
-    background:#fff; border-radius:8px; padding:0.65rem 0.75rem;
+    /* texto escuro: antes herdava branco e o nome/saldo sumiam no fundo branco */
+    background:#fff; color:#1a1a1a; border-radius:8px; padding:0.65rem 0.75rem;
     margin-bottom:0.5rem; box-shadow:0 1px 6px rgba(0,0,0,0.06);
 }
 .account-item > div,
@@ -1108,6 +1109,7 @@ body {
     .limit-metrics { align-items:flex-start; flex-direction:column; gap:0.25rem; }
 }
 
+.installment-edit-note[hidden] { display:none; }
 .installment-edit-note {
     margin:-0.5rem 0 1rem; padding:0.6rem 0.75rem; border-radius:8px;
     background:rgba(184,134,59,0.12); color:#5c4520; font-size:0.8rem; line-height:1.4;
@@ -1137,3 +1139,11 @@ button.hero-chart-icon:hover, button.hero-chart-icon:focus-visible { opacity:0.9
 @media (max-width:900px) {
     .auth-box { min-height:0; }
 }
+
+/* Percentual no card de limites da home */
+.lim-item-pct { font-size:0.72rem; font-weight:600; color:var(--green, #1F9E6D); margin-top:0.3rem; }
+.lim-item-pct.warn { color:#b7791f; }
+.lim-item-pct.over { color:var(--red, #C0392B); }
+
+/* Texto de ajuda do modal de limites colado no rotulo seguinte */
+#limit-modal .form-help { display:block; margin:-0.5rem 0 1.1rem; line-height:1.4; }

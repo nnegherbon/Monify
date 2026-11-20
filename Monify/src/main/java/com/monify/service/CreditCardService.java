@@ -33,7 +33,7 @@ public class CreditCardService {
         User user = userService.getUserById(userId);
         creditCardRepository.findByUserIdAndNameIgnoreCase(userId, dto.getName())
                 .ifPresent(card -> {
-                    throw new RuntimeException("Cartao ja cadastrado");
+                    throw new RuntimeException("Cartão já cadastrado");
                 });
 
         CreditCard card = CreditCard.builder()
@@ -52,14 +52,14 @@ public class CreditCardService {
     public void deleteCard(Long userId, Long id) {
         CreditCard card = getOwnedCard(userId, id);
         if (transactionRepository.existsByCreditCardId(id)) {
-            throw new RuntimeException("O cartao possui lancamentos vinculados e nao pode ser excluido");
+            throw new RuntimeException("O cartão possui lançamentos vinculados e não pode ser excluído");
         }
         creditCardRepository.delete(card);
     }
 
     public CreditCard getOwnedCard(Long userId, Long id) {
         return creditCardRepository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new RuntimeException("Cartao nao encontrado para o usuario"));
+                .orElseThrow(() -> new RuntimeException("Cartão não encontrado para o usuário"));
     }
 
     public void adjustUsedAmount(Long userId, Long id, BigDecimal amount) {

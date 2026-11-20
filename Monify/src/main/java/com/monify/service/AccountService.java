@@ -33,7 +33,7 @@ public class AccountService {
         User user = userService.getUserById(userId);
         accountRepository.findByUserIdAndNameIgnoreCase(userId, dto.getName())
                 .ifPresent(account -> {
-                    throw new RuntimeException("Conta ja cadastrada");
+                    throw new RuntimeException("Conta já cadastrada");
                 });
 
         Account account = Account.builder()
@@ -49,14 +49,14 @@ public class AccountService {
     public void deleteAccount(Long userId, Long id) {
         Account account = getOwnedAccount(userId, id);
         if (transactionRepository.existsByAccountId(id)) {
-            throw new RuntimeException("A conta possui lancamentos vinculados e nao pode ser excluida");
+            throw new RuntimeException("A conta possui lançamentos vinculados e não pode ser excluída");
         }
         accountRepository.delete(account);
     }
 
     public Account getOwnedAccount(Long userId, Long id) {
         return accountRepository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new RuntimeException("Conta nao encontrada para o usuario"));
+                .orElseThrow(() -> new RuntimeException("Conta não encontrada para o usuário"));
     }
 
     public void adjustBalance(Long userId, Long id, BigDecimal amount) {

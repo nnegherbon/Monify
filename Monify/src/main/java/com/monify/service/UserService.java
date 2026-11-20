@@ -75,7 +75,7 @@ public class UserService {
         userRepository.findByEmail(profileDTO.getEmail())
                 .filter(existing -> !existing.getId().equals(id))
                 .ifPresent(existing -> {
-                    throw new RuntimeException("Email ja cadastrado");
+                    throw new RuntimeException("Email já cadastrado");
                 });
 
         user.setName(profileDTO.getName());

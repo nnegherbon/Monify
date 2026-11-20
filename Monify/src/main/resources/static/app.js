@@ -303,6 +303,8 @@ function showSection(section, event) {
     const target = event && event.target ? event.target : null;
     if (target && target.classList.contains('nav-btn')) target.classList.add('active');
     else if (section === 'dashboard') document.querySelector('.nav-btn')?.classList.add('active');
+    // cada tela abre do topo (antes mantinha a rolagem da tela anterior, principalmente no celular)
+    window.scrollTo(0, 0);
     if (section === 'dashboard') loadDashboard();
     if (section === 'lancamentos') loadLancamentos();
     if (section === 'relatorios') loadRelatorios();
@@ -612,7 +614,7 @@ function renderAccountsModalList() {
     list.innerHTML = accounts.length ? accounts.map(account => `<div class="modal-list-item">
         <span>${escapeHtml(account.name)} <small>${formatAccountType(account.type)}</small></span>
         <strong>${formatCurrency(account.balance)}</strong>
-        <button type="button" class="mini-action danger" onclick="deleteAccount(${account.id})">x</button>
+        <button type="button" class="mini-action danger" onclick="deleteAccount(${account.id})" aria-label="Excluir conta" title="Excluir conta">✕</button>
     </div>`).join('') : '<p class="modal-empty">Nenhuma conta cadastrada.</p>';
 }
 
@@ -622,7 +624,7 @@ function renderCardsModalList() {
     list.innerHTML = creditCards.length ? creditCards.map(card => `<div class="modal-list-item">
         <span>${escapeHtml(card.name)} <small>${escapeHtml(card.brand)} final ${escapeHtml(card.lastFour)}</small></span>
         <strong>${formatCurrency(card.usedAmount || 0)} / ${formatCurrency(card.limitAmount)}</strong>
-        <button type="button" class="mini-action danger" onclick="deleteCreditCard(${card.id})">x</button>
+        <button type="button" class="mini-action danger" onclick="deleteCreditCard(${card.id})" aria-label="Excluir cartão" title="Excluir cartão">✕</button>
     </div>`).join('') : '<p class="modal-empty">Nenhum cartão cadastrado.</p>';
 }
 
@@ -864,7 +866,7 @@ function buildPendingItem(transaction, overdue, actionLabel) {
         <div class="pagar-item-icon">${escapeHtml(transaction.categoryIcon || '-')}</div>
         <div class="pagar-item-info">
             <div class="pagar-item-name">${escapeHtml(transaction.description)}</div>
-            <div class="pagar-item-sub">${escapeHtml(transaction.categoryName || '')} - ${escapeHtml(transaction.originDescription || 'Origem nao informada')} - ${dateLabel} ${formatDate(transaction.date)}</div>
+            <div class="pagar-item-sub">${escapeHtml(transaction.categoryName || '')} - ${escapeHtml(transaction.originDescription || 'Origem não informada')} - ${dateLabel} ${formatDate(transaction.date)}</div>
         </div>
         <div class="pagar-item-actions">
             <div class="pagar-item-amount" style="color:${amountColor}">${formatCurrency(transaction.amount)}</div>
@@ -966,7 +968,8 @@ function renderLimitesCard() {
     body.innerHTML = sorted.map(l => {
         const used = Number(l.usedAmount ?? l.spent ?? 0);
         const amount = Number(l.amount || 0);
-        const pct = Math.min(Number(l.percentage || 0), 100);
+        const realPct = Number(l.percentage || 0);
+        const pct = Math.min(realPct, 100);
         const fillClass = pct >= 100 ? 'over' : pct >= 75 ? 'warn' : '';
         const isGeneral = l.scope === 'GENERAL';
         const category = findCategoryByName(l.categoryName);
@@ -978,6 +981,7 @@ function renderLimitesCard() {
                 <div class="lim-item-vals">${formatCurrency(used)} / ${formatCurrency(amount)}</div>
             </div>
             <div class="lim-progress-bar"><div class="lim-progress-fill ${fillClass}" style="width:${pct.toFixed(1)}%"></div></div>
+            <div class="lim-item-pct ${fillClass}">${formatPercent(realPct, 1)} utilizado${realPct > 100 ? ' · limite estourado' : ''}</div>
         </div>`;
     }).join('');
 }
@@ -1016,6 +1020,11 @@ function showModal(id) {
     modal.style.display = 'flex';
     modal.scrollTop = 0;
     modal.querySelectorAll('.modal-box').forEach(box => { box.scrollTop = 0; });
+    // leva o foco para o primeiro campo (teclado e leitores de tela comecam dentro do modal)
+    requestAnimationFrame(() => {
+        const first = modal.querySelector('input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea, button:not(.modal-close)');
+        if (first) first.focus({ preventScroll: true });
+    });
 }
 
 /**
@@ -1313,6 +1322,16 @@ async function handleQuickAdd(e) {
     const originPayload = originType === 'ACCOUNT'
         ? { originType, accountId: originId, creditCardId: null }
         : { originType, accountId: null, creditCardId: originId };
+    // Aviso antes de deixar uma conta com saldo negativo
+    if (!editingTransactionId && type === 'EXPENSE' && status === 'COMPLETED' && originValue.startsWith('ACCOUNT:')) {
+        const account = accounts.find(item => String(item.id) === originValue.split(':')[1]);
+        const balance = Number(account?.balance || 0);
+        if (account && amount > balance) {
+            const ok = await customConfirm(`O saldo de ${account.name} é ${formatCurrency(balance)}. Com esta despesa ele ficará em ${formatCurrency(balance - amount)}. Deseja continuar?`);
+            if (!ok) return;
+        }
+    }
+
     const submitButton = document.getElementById('transaction-submit-button');
     const submitLabel = submitButton ? submitButton.textContent : '';
     if (submitButton) { submitButton.disabled = true; submitButton.textContent = 'Salvando...'; }
@@ -1386,6 +1405,9 @@ function getFilteredTransactions() {
 }
 
 async function loadLancamentos() {
+    // mostra na hora o que ja esta carregado (antes a lista do mes anterior ficava
+    // na tela ~1s depois de trocar o mes) e depois atualiza com o servidor
+    renderLancamentos();
     await fetchAllTransactions();
     renderLancamentos();
 }
@@ -1422,7 +1444,7 @@ function renderLancamentos() {
             <div class="lanc-item-icon ${isExp ? 'expense-icon' : 'income-icon'}">${t.categoryIcon || (isExp ? '💸' : '💰')}</div>
             <div class="lanc-item-info">
                 <div class="lanc-item-name">${escapeHtml(t.description)} ${badge}</div>
-                <div class="lanc-item-sub">${escapeHtml(t.categoryName || '')} - ${formatDate(t.date)} - ${escapeHtml(periodicityLabel)} - ${escapeHtml(t.originDescription || 'Origem nao informada')}</div>
+                <div class="lanc-item-sub">${escapeHtml(t.categoryName || '')} - ${formatDate(t.date)} - ${escapeHtml(periodicityLabel)} - ${escapeHtml(t.originDescription || 'Origem não informada')}</div>
             </div>
             <div class="lanc-item-amount ${isExp ? 'expense' : 'income'}">
                 ${isExp ? '-' : '+'}${formatCurrency(Math.abs(t.amount))}
@@ -1438,6 +1460,31 @@ function renderLancamentos() {
     updateLancFooter(transactions);
 }
 
+/** Efeito de um lancamento efetivado no saldo das contas (compras no cartao nao mexem na conta). */
+function accountEffect(transaction) {
+    if (!transaction.accountId || !isTransactionCompleted(transaction)) return 0;
+    const amount = Number(transaction.amount || 0);
+    return transaction.type === 'INCOME' ? amount : -amount;
+}
+
+/**
+ * Saldo das contas no inicio de uma data. O saldo atual das contas ja inclui
+ * todos os lancamentos efetivados; tirando esses efeitos chegamos no saldo
+ * inicial, e somamos de volta so o que aconteceu antes da data.
+ */
+function accountsBalanceBefore(date) {
+    const current = accounts.reduce((sum, account) => sum + Number(account.balance || 0), 0);
+    let opening = current;
+    let before = 0;
+    allTransactions.forEach(transaction => {
+        const effect = accountEffect(transaction);
+        if (!effect) return;
+        opening -= effect;
+        if (parseLocalDate(transaction.date) < date) before += effect;
+    });
+    return opening + before;
+}
+
 function updateLancFooter(transactions) {
     const completed = transactions.filter(isTransactionCompleted);
     const pending = transactions.filter(transaction => !isTransactionCompleted(transaction));
@@ -1445,12 +1492,20 @@ function updateLancFooter(transactions) {
     const expense = completed.filter(t => t.type === 'EXPENSE').reduce((a,t) => a + Number(t.amount), 0);
     const pendingIncome = pending.filter(t => t.type === 'INCOME').reduce((a,t) => a + Number(t.amount), 0);
     const pendingExpense = pending.filter(t => t.type === 'EXPENSE').reduce((a,t) => a + Number(t.amount), 0);
-    const saldo = income - expense;
-    const forecast = saldo + pendingIncome - pendingExpense;
+    // saldo = saldo das contas no inicio do mes + o que entrou/saiu das contas no mes
+    // (antes comecava em zero e descontava as compras no cartao como se fosse dinheiro da conta)
+    const monthStart = new Date(monthState.lanc.getFullYear(), monthState.lanc.getMonth(), 1);
+    const previous = accountsBalanceBefore(monthStart);
+    const saldo = previous + transactions.reduce((sum, t) => sum + accountEffect(t), 0);
+    const pendingNet = pending
+        .filter(t => t.accountId)
+        .reduce((sum, t) => sum + (t.type === 'INCOME' ? 1 : -1) * Number(t.amount || 0), 0);
+    const forecast = saldo + pendingNet;
     setElText('f-saldo', formatNumber(saldo));
     setElText('f-previsto', formatNumber(forecast));
     const expandedRows = document.querySelectorAll('#lanc-summary-expanded .lanc-footer-row span:last-child');
     if (expandedRows.length >= 7) {
+        expandedRows[0].textContent = formatNumber(previous);
         expandedRows[1].textContent = formatNumber(income);
         expandedRows[2].textContent = formatNumber(pendingIncome);
         expandedRows[3].textContent = formatNumber(expense);
@@ -1550,10 +1605,14 @@ async function deleteTransaction(id) {
 
 // ===== RELATÓRIOS =====
 async function loadRelatorios() {
+    const render = () => {
+        renderReportFilterBadge();
+        renderCategoryReport(getReportMonthTransactions());
+        renderFlowReport();
+    };
+    render();
     await fetchAllTransactions();
-    renderReportFilterBadge();
-    renderCategoryReport(getReportMonthTransactions());
-    renderFlowReport();
+    render();
 }
 
 function getReportMonthTransactions() {
@@ -1912,7 +1971,15 @@ function buildFlowGroups(transactions, period) {
         groups = buildAccumulatedGroups(transactions);
     }
 
-    let runningBalance = 0;
+    // o saldo parte do saldo das contas no inicio do periodo (antes partia de zero)
+    let runningBalance;
+    if (period === 'diario' || period === 'semanal') {
+        runningBalance = accountsBalanceBefore(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1));
+    } else if (period === 'mensal') {
+        runningBalance = accountsBalanceBefore(new Date(selectedMonth.getFullYear(), 0, 1));
+    } else {
+        runningBalance = accountsBalanceBefore(new Date(1900, 0, 1));
+    }
     groups.forEach(group => {
         group.result = group.income - group.expense;
         runningBalance += group.result;

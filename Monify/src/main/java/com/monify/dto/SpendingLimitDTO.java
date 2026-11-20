@@ -26,7 +26,7 @@ public class SpendingLimitDTO {
     private String categoryName;
 
     @NotBlank(message = "Mes de referencia e obrigatorio")
-    @Pattern(regexp = "\\d{4}-\\d{2}", message = "Mes deve estar no formato yyyy-MM")
+    @Pattern(regexp = "\\d{4}-\\d{2}", message = "Mês deve estar no formato yyyy-MM")
     private String month;
 
     @NotNull(message = "Valor limite e obrigatorio")

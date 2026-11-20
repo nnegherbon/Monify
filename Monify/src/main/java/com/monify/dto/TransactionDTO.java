@@ -1,9 +1,11 @@
 package com.monify.dto;
 
 import com.monify.entity.Transaction;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,12 +24,14 @@ public class TransactionDTO {
 
     @NotNull(message = "Valor é obrigatório")
     @Positive(message = "Valor deve ser maior que zero")
+    @DecimalMax(value = "99999999.99", message = "Valor muito alto (máximo R$ 99.999.999,99)")
     private BigDecimal amount;
 
     @NotNull(message = "Tipo é obrigatório")
     private Transaction.TransactionType type;
 
     @NotBlank(message = "Descrição é obrigatória")
+    @Size(max = 255, message = "Descrição deve ter no máximo 255 caracteres")
     private String description;
 
     @NotNull(message = "Data é obrigatória")

@@ -72,7 +72,7 @@ public class SpendingLimitService {
                 .ifPresent(existing -> {
                     throw new RuntimeException(scope == SpendingLimit.Scope.GENERAL
                             ? "Ja existe um limite geral cadastrado para este mes"
-                            : "Limite ja cadastrado para esta categoria e mes");
+                            : "Limite já cadastrado para esta categoria e mês");
                 });
 
         SpendingLimit limit = SpendingLimit.builder()
@@ -112,7 +112,7 @@ public class SpendingLimitService {
                 .ifPresent(existing -> {
                     throw new RuntimeException(scope == SpendingLimit.Scope.GENERAL
                             ? "Ja existe um limite geral cadastrado para este mes"
-                            : "Limite ja cadastrado para esta categoria e mes");
+                            : "Limite já cadastrado para esta categoria e mês");
                 });
 
         applyValues(limit, dto, categoryKey, categoryName, limitType, scope);
@@ -151,9 +151,9 @@ public class SpendingLimitService {
 
     private SpendingLimit getOwnedLimit(Long userId, Long id) {
         SpendingLimit limit = spendingLimitRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Limite nao encontrado"));
+                .orElseThrow(() -> new RuntimeException("Limite não encontrado"));
         if (!limit.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Limite nao pertence ao usuario");
+            throw new RuntimeException("Limite não pertence ao usuário");
         }
         return limit;
     }
@@ -197,7 +197,7 @@ public class SpendingLimitService {
         try {
             return YearMonth.parse(month);
         } catch (DateTimeException | NullPointerException e) {
-            throw new RuntimeException("Mes deve estar no formato yyyy-MM");
+            throw new RuntimeException("Mês deve estar no formato yyyy-MM");
         }
     }
 

@@ -62,7 +62,7 @@ public class TransactionService {
 
     public Transaction getTransactionById(Long id) {
         return transactionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Lancamento nao encontrado"));
+                .orElseThrow(() -> new RuntimeException("Lançamento não encontrado"));
     }
 
     public List<TransactionDTO> getTransactionsByUserId(Long userId) {
@@ -385,7 +385,7 @@ public class TransactionService {
             throw new RuntimeException("Parcelamento e permitido apenas no cartao de credito");
         }
         if (defaultPeriodicity(dto.getPeriodicity()) != Transaction.TransactionPeriodicity.SINGLE) {
-            throw new RuntimeException("Compra parcelada nao pode ter recorrencia mensal ou anual");
+            throw new RuntimeException("Compra parcelada não pode ter recorrência mensal ou anual");
         }
     }
 
@@ -459,7 +459,7 @@ public class TransactionService {
     public Transaction getOwnedTransaction(Long userId, Long id) {
         Transaction transaction = getTransactionById(id);
         if (!transaction.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Lancamento nao pertence ao usuario");
+            throw new RuntimeException("Lançamento não pertence ao usuário");
         }
         return transaction;
     }

@@ -20,7 +20,7 @@ public class CategoryService {
         }
         String normalizedName = name.trim();
         if (categoryRepository.findByName(normalizedName).isPresent()) {
-            throw new RuntimeException("Categoria ja cadastrada");
+            throw new RuntimeException("Categoria já cadastrada");
         }
         Category category = Category.builder()
                 .name(normalizedName)
