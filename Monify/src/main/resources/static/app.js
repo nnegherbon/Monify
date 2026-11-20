@@ -98,10 +98,21 @@ function updateLimEmptyMsg() {
 }
 
 // ===== AUTH =====
+/** Desabilita o botao de envio e troca o texto enquanto a requisicao roda. */
+function setSubmitting(form, busyLabel) {
+    const button = form && form.querySelector('button[type="submit"]');
+    if (!button) return () => {};
+    const label = button.textContent;
+    button.disabled = true;
+    button.textContent = busyLabel;
+    return () => { button.disabled = false; button.textContent = label; };
+}
+
 async function handleLogin(e) {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
+    const done = setSubmitting(e.target, 'Entrando...');
     try {
         const res = await fetch(`${API_BASE_URL}/users/login`, {
             method:'POST', headers:{'Content-Type':'application/json'},
@@ -116,6 +127,7 @@ async function handleLogin(e) {
             loadDashboard({ skipFetch: true });
         } else alert('Erro: ' + data.error);
     } catch { alert('Não foi possível fazer login. Verifique sua conexão e tente novamente.'); }
+    finally { done(); }
 }
 
 async function handleRegister(e) {
@@ -123,6 +135,7 @@ async function handleRegister(e) {
     const name = document.getElementById('register-name').value;
     const email = document.getElementById('register-email').value;
     const password = document.getElementById('register-password').value;
+    const done = setSubmitting(e.target, 'Criando conta...');
     try {
         const res = await fetch(`${API_BASE_URL}/users/register`, {
             method:'POST', headers:{'Content-Type':'application/json'},
@@ -135,6 +148,7 @@ async function handleRegister(e) {
             document.getElementById('login-email').value = email;
         } else alert('Erro: ' + data.error);
     } catch { alert('Erro ao cadastrar'); }
+    finally { done(); }
 }
 
 function logout(options = {}) {
@@ -627,6 +641,7 @@ async function handleAddAccount(e) {
         });
         if (!res.ok) throw await res.json();
         e.target.reset();
+        alert('Conta adicionada.');
         await fetchAccounts();
         renderAccountsCard();
         renderAccountsModalList();
@@ -671,6 +686,7 @@ async function handleAddCard(e) {
         });
         if (!res.ok) throw await res.json();
         e.target.reset();
+        alert('Cartão adicionado.');
         await fetchCreditCards();
         renderCardsCard();
         renderCardsModalList();
@@ -908,17 +924,19 @@ function renderGastosCard() {
     const groups = {};
     expenses.forEach(t => {
         const k = t.categoryName || 'Outros';
-        if (!groups[k]) groups[k] = { icon: t.categoryIcon || '📦', total: 0 };
+        if (!groups[k]) groups[k] = { icon: t.categoryIcon || '📦', color: t.categoryColor || '', total: 0 };
         groups[k].total += t.amount;
     });
     const sorted = Object.entries(groups).sort((a,b) => b[1].total - a[1].total);
     const total = sorted.reduce((a,[,g]) => a + g.total, 0);
-    const colors = ['#EFB4B4','#B8863B','#C1D8C0','#f59e0b','#D9A65C','#C0392B','#BEBEBE','#1F9E6D'];
+    // Mesma cor da categoria em todas as telas (antes a cor dependia da posicao no ranking).
+    const fallback = ['#EFB4B4','#B8863B','#C1D8C0','#f59e0b','#D9A65C','#C0392B','#BEBEBE','#1F9E6D'];
+    const colors = sorted.map(([, g], i) => g.color || fallback[i % fallback.length]);
 
     listEl.innerHTML = sorted.slice(0,5).map(([name, g], i) => {
         const pct = formatNumber((g.total/total)*100, 1);
         return `<div class="gastos-item">
-            <div class="gastos-item-icon" style="background:${colors[i]||'#888'}">${g.icon}</div>
+            <div class="gastos-item-icon" style="background:${escapeHtml(colors[i] || '#888')}">${g.icon}</div>
             <div class="gastos-item-name">${name}</div>
             <div class="gastos-item-pct">${pct}%</div>
         </div>`;
@@ -1050,8 +1068,8 @@ function openEditTransaction(id) {
     const isInstallment = Number(transaction.installmentCount || 1) > 1;
     document.getElementById('q-card-payment-mode').value = isInstallment ? 'INSTALLMENT' : 'ONE_TIME';
     document.getElementById('q-installment-count').value = isInstallment ? Number(transaction.installmentCount) : 2;
-    syncInstallmentControls();
     setInstallmentEditLock(isInstallment, transaction);
+    syncInstallmentControls();
     document.getElementById('modal-title').textContent = 'Editar Lançamento';
     const form = document.getElementById('quick-modal').querySelector('form');
     if (form) form.dataset.mode = 'edit';
@@ -1449,7 +1467,8 @@ function toggleLancSummary() {
     const isHidden = expanded.style.display === 'none' || !expanded.style.display;
     collapsed.style.display = isHidden ? 'none' : 'block';
     expanded.style.display = isHidden ? 'block' : 'none';
-    btn.textContent = isHidden ? '−' : '+';
+    btn.textContent = isHidden ? 'Ocultar resumo ▴' : 'Ver resumo ▾';
+    btn.setAttribute('aria-expanded', String(isHidden));
 }
 
 function clearLancFilters() {

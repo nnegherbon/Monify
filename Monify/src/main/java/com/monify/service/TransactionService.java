@@ -211,7 +211,7 @@ public class TransactionService {
                 .installmentTotalAmount(transaction.getInstallmentTotalAmount() != null
                         ? transaction.getInstallmentTotalAmount()
                         : transaction.getAmount())
-                .originName(account != null ? account.getName() : card != null ? card.getName() : "Nao informado")
+                .originName(account != null ? account.getName() : card != null ? card.getName() : "Não informado")
                 .originDescription(originDescription(account, card))
                 .categoryId(transaction.getCategory().getId())
                 .categoryName(transaction.getCategory().getName())
@@ -493,9 +493,9 @@ public class TransactionService {
             return account.getType().getDisplayName() + " - " + account.getName();
         }
         if (card != null) {
-            return "Cartao de credito - " + card.getName() + " final " + card.getLastFour();
+            return "Cartão de crédito - " + card.getName() + " final " + card.getLastFour();
         }
-        return "Origem nao informada";
+        return "Origem não informada";
     }
 
     private List<TransactionDTO> toDTOList(List<Transaction> transactions) {

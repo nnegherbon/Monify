@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- O site ja tem tema escuro: impede extensoes como o Dark Reader de inverter as cores -->
+    <meta name="darkreader-lock">
     <title>Hotel Bella Julia - Gestão Financeira</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="styles.css?v=20261120-1">
+    <link rel="stylesheet" href="styles.css?v=20261120-3">
 </head>
 <body>
 
@@ -121,7 +123,7 @@
                     <span class="stat-label">Despesas do hotel no mês atual</span>
                     <span class="stat-value expense" id="hero-expense">R$ 0,00</span>
                 </div>
-                <div class="hero-chart-icon">📊</div>
+                <button class="hero-chart-icon" type="button" onclick="showSection('relatorios',{target:document.querySelectorAll('.nav-btn')[2]})" title="Ver relatórios" aria-label="Ver relatórios">📊</button>
             </div>
             <div class="hero-quick">
                 <span class="quick-label">Acesso rápido</span>
@@ -309,7 +311,7 @@
                     <div class="lanc-footer-row"><span>previsto</span><span>0,00</span></div>
                 </div>
                 <div class="lanc-footer-btns">
-                    <button class="toggle-summary-btn" onclick="toggleLancSummary()" id="summary-toggle-btn">+</button>
+                    <button class="toggle-summary-btn" onclick="toggleLancSummary()" id="summary-toggle-btn" aria-expanded="false">Ver resumo ▾</button>
                 </div>
             </div>
         </div>
@@ -568,7 +570,7 @@
     <div class="modal-box report-filter-modal">
         <div class="modal-header">
             <h3>Filtrar relatórios</h3>
-            <button class="modal-close" onclick="closeReportFiltersModal()" type="button">x</button>
+            <button class="modal-close" onclick="closeReportFiltersModal()" type="button" aria-label="Fechar">✕</button>
         </div>
         <div class="report-filter-section">
             <span class="report-filter-title">Tipos</span>
@@ -595,7 +597,7 @@
     <div class="modal-box">
         <div class="modal-header">
             <h3>Gerenciar Contas do Hotel</h3>
-            <button class="modal-close" onclick="closeAccountsModal()">x</button>
+            <button class="modal-close" onclick="closeAccountsModal()" type="button" aria-label="Fechar">✕</button>
         </div>
         <form onsubmit="handleAddAccount(event)">
             <div class="form-group">
@@ -628,7 +630,7 @@
     <div class="modal-box">
         <div class="modal-header">
             <h3>Adicionar Cartão Corporativo</h3>
-            <button class="modal-close" onclick="closeCardsModal()">x</button>
+            <button class="modal-close" onclick="closeCardsModal()" type="button" aria-label="Fechar">✕</button>
         </div>
         <form onsubmit="handleAddCard(event)">
             <div class="form-group">
@@ -665,7 +667,7 @@
     <div class="modal-box">
         <div class="modal-header">
             <h3>Configurações</h3>
-            <button class="modal-close" onclick="closeProfileModal()">x</button>
+            <button class="modal-close" onclick="closeProfileModal()" type="button" aria-label="Fechar">✕</button>
         </div>
         <form onsubmit="handleProfileUpdate(event)">
             <div class="form-group">
@@ -688,7 +690,7 @@
     </div>
 </div>
 
-<script src="ui-shim.js?v=20261120-1"></script>
-<script src="app.js?v=20261120-1"></script>
+<script src="ui-shim.js?v=20261120-3"></script>
+<script src="app.js?v=20261120-3"></script>
 </body>
 </html>

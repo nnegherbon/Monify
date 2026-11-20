@@ -133,7 +133,8 @@ body {
 .brand-features li { color:rgba(255,255,255,0.65); font-size:0.9rem; display:flex; align-items:center; gap:0.6rem; }
 .feat-icon { color:var(--accent-2); }
 .auth-right { display:flex; align-items:center; justify-content:center; padding:3rem; }
-.auth-box { width:100%; max-width:400px; animation:fadeUp 0.7s 0.1s ease both; }
+/* min-height igual ao formulario de cadastro: as abas nao "pulam" ao trocar de Login para Cadastro */
+.auth-box { width:100%; max-width:400px; min-height:560px; animation:fadeUp 0.7s 0.1s ease both; }
 .auth-tabs {
     display:flex; background:rgba(255,255,255,0.06); border-radius:10px;
     padding:4px; border:1px solid var(--border-subtle); margin-bottom:2rem;
@@ -165,12 +166,12 @@ body {
 .form-group input,
 .form-group select {
     width:100%; padding:0.75rem 1rem;
-    background:rgba(255,255,255,0.07);
-    border:1px solid rgba(255,255,255,0.12);
+    background:rgba(255,255,255,0.1);
+    border:1px solid rgba(255,255,255,0.28);
     border-radius:8px; color:var(--text-light);
     font-family:var(--font); font-size:0.95rem; transition:all 0.2s; outline:none;
 }
-.form-group input::placeholder { color:rgba(255,255,255,0.25); }
+.form-group input::placeholder { color:rgba(255,255,255,0.45); }
 .form-group input:focus,
 .form-group select:focus { border-color:var(--accent-2); background:rgba(255,255,255,0.1); box-shadow:0 0 0 3px rgba(184,134,59,0.2); }
 .form-group select option { background:#12003a; color:var(--text-light); }
@@ -388,6 +389,8 @@ body {
     max-height: 0 !important;
     opacity: 0;
 }
+/* card recolhido nao deixa espaco vazio embaixo do titulo */
+.dash-card:has(.dash-card-body.collapsed) .dash-card-header { margin-bottom: 0; }
 
 .dash-amount-row { display:flex; align-items:center; gap:0.4rem; margin-bottom:0.6rem; }
 .dash-amount { font-size:1rem; font-weight:700; color:#1a1a1a; transition: filter 0.2s; }
@@ -1108,4 +1111,29 @@ body {
 .installment-edit-note {
     margin:-0.5rem 0 1rem; padding:0.6rem 0.75rem; border-radius:8px;
     background:rgba(184,134,59,0.12); color:#5c4520; font-size:0.8rem; line-height:1.4;
+}
+
+/* Icone de relatorios do topo da home agora e um botao */
+button.hero-chart-icon { background:none; border:none; cursor:pointer; padding:0.25rem; border-radius:6px; transition:opacity 0.2s; }
+button.hero-chart-icon:hover, button.hero-chart-icon:focus-visible { opacity:0.9; outline:2px solid rgba(255,255,255,0.3); outline-offset:2px; }
+
+/* Botao "Ver resumo" do rodape de lancamentos */
+#summary-toggle-btn { width:auto; height:auto; border-radius:999px; padding:0.35rem 0.8rem; font-size:0.75rem; font-weight:600; white-space:nowrap; }
+
+/* Excluir conta/cartao: alvo maior e cor de perigo so no hover, para evitar clique acidental */
+.mini-action.danger, .mini-action.card-delete { min-width:28px; min-height:28px; opacity:0.55; transition:opacity 0.2s, background 0.2s; }
+.mini-action.danger:hover, .mini-action.card-delete:hover,
+.mini-action.danger:focus-visible, .mini-action.card-delete:focus-visible { opacity:1; }
+
+/* Foco visivel nos botoes so de icone */
+.card-chevron:focus-visible, .eye-btn:focus-visible, .modal-close:focus-visible, .icon-btn:focus-visible {
+    outline:2px solid var(--accent-2); outline-offset:2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; scroll-behavior:auto !important; }
+}
+
+@media (max-width:900px) {
+    .auth-box { min-height:0; }
 }
