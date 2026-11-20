@@ -239,7 +239,7 @@ public class TransactionServiceTest {
                 .accountId(testAccount.getId())
                 .build();
 
-        Transaction updated = transactionService.updateTransaction(transaction.getId(), updateDTO);
+        Transaction updated = transactionService.updateTransaction(testUser.getId(), transaction.getId(), updateDTO);
 
         assertEquals(new BigDecimal("200.00"), updated.getAmount());
         assertEquals("Teste atualizado", updated.getDescription());
@@ -263,7 +263,7 @@ public class TransactionServiceTest {
         Transaction transaction = transactionService.createTransaction(testUser.getId(), transactionDTO);
         Long transactionId = transaction.getId();
 
-        transactionService.deleteTransaction(transactionId);
+        transactionService.deleteTransaction(testUser.getId(), transactionId);
 
         assertThrows(RuntimeException.class, () -> transactionService.getTransactionById(transactionId));
         assertEquals(new BigDecimal("100.00"), accountRepository.findById(testAccount.getId()).orElseThrow().getBalance());

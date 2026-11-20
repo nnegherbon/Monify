@@ -47,6 +47,19 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findByUserIdAndDateRange(@Param("userId") Long userId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
 
+    @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.user.id = :userId AND t.type = 'EXPENSE' AND t.status = 'COMPLETED' AND t.date BETWEEN :startDate AND :endDate")
+    BigDecimal sumCompletedExpenses(
+            @Param("userId") Long userId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.user.id = :userId AND t.type = 'EXPENSE' AND t.status = 'COMPLETED' AND t.date BETWEEN :startDate AND :endDate AND LOWER(t.category.name) = LOWER(:categoryName)")
+    BigDecimal sumCompletedExpensesByCategory(
+            @Param("userId") Long userId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("categoryName") String categoryName);
+
     @Query("SELECT t.category.name, SUM(t.amount) FROM Transaction t WHERE t.user.id = :userId AND t.type = 'EXPENSE' AND t.status = 'COMPLETED' GROUP BY t.category.name")
     List<Object[]> getExpensesByCategory(@Param("userId") Long userId);
 

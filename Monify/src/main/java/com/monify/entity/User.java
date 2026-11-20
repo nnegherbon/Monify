@@ -47,6 +47,9 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SpendingLimit> spendingLimits;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserSession> sessions;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();

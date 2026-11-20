@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20261120-1">
 </head>
 <body>
 
@@ -82,7 +82,7 @@
 <div id="app-page" style="display:none;">
     <nav class="navbar navbar-app">
         <button class="navbar-brand navbar-brand-button" type="button" onclick="goHome()" aria-label="Ir para a tela inicial">Hotel Bella Julia</button>
-        <div class="navbar-menu">
+        <div class="navbar-menu" role="navigation" aria-label="Menu principal">
             <button class="nav-btn active" onclick="showSection('dashboard',event)">home</button>
             <button class="nav-btn" onclick="showSection('lancamentos',event)">lançamentos</button>
             <button class="nav-btn" onclick="showSection('relatorios',event)">relatórios</button>
@@ -148,7 +148,7 @@
                         <span>Saldo Geral</span>
                         <button class="eye-btn" onclick="toggleVisibility('balance-val')" type="button"></button>
                     </div>
-                    <button class="card-chevron" onclick="toggleCard('saldo-body',this)">︿</button>
+                    <button class="card-chevron" aria-label="Recolher ou expandir card" onclick="toggleCard('saldo-body',this)">︿</button>
                 </div>
                 <div id="saldo-body" class="dash-card-body expanded">
                     <div class="dash-amount-row">
@@ -167,7 +167,7 @@
                         <span>Cartões Corporativos</span>
                         <button class="eye-btn" onclick="toggleVisibility('faturas-val')" type="button"></button>
                     </div>
-                    <button class="card-chevron" onclick="toggleCard('faturas-body',this)">︿</button>
+                    <button class="card-chevron" aria-label="Recolher ou expandir card" onclick="toggleCard('faturas-body',this)">︿</button>
                 </div>
                 <div id="faturas-body" class="dash-card-body expanded">
                     <div class="dash-amount-row">
@@ -183,7 +183,7 @@
             <div class="dash-card" id="card-pagar">
                 <div class="dash-card-header">
                     <div class="dash-card-title"><span>Contas a pagar</span></div>
-                    <button class="card-chevron" onclick="toggleCard('pagar-body',this)">︿</button>
+                    <button class="card-chevron" aria-label="Recolher ou expandir card" onclick="toggleCard('pagar-body',this)">︿</button>
                 </div>
                 <div id="pagar-body" class="dash-card-body expanded">
                     <div class="card-empty-state alone">
@@ -196,7 +196,7 @@
             <div class="dash-card" id="card-receber">
                 <div class="dash-card-header">
                     <div class="dash-card-title"><span>Contas a receber</span></div>
-                    <button class="card-chevron" onclick="toggleCard('receber-body',this)">︿</button>
+                    <button class="card-chevron" aria-label="Recolher ou expandir card" onclick="toggleCard('receber-body',this)">︿</button>
                 </div>
                 <div id="receber-body" class="dash-card-body expanded">
                     <div class="card-empty-state alone">
@@ -211,7 +211,7 @@
                     <div class="dash-card-title"><span>Maiores gastos do mês atual</span></div>
                     <div style="display:flex;gap:0.4rem;align-items:center;">
                         <button class="card-chevron">⚙</button>
-                        <button class="card-chevron" onclick="toggleCard('gastos-body',this)">︿</button>
+                        <button class="card-chevron" aria-label="Recolher ou expandir card" onclick="toggleCard('gastos-body',this)">︿</button>
                     </div>
                 </div>
                 <div id="gastos-body" class="dash-card-body expanded">
@@ -233,7 +233,7 @@
             <div class="dash-card" id="card-limites">
                 <div class="dash-card-header">
                     <div class="dash-card-title"><span id="dashboard-limits-title">Limites de gastos</span></div>
-                    <button class="card-chevron" onclick="toggleCard('limites-body',this)">︿</button>
+                    <button class="card-chevron" aria-label="Recolher ou expandir card" onclick="toggleCard('limites-body',this)">︿</button>
                 </div>
                 <div id="limites-body" class="dash-card-body expanded">
                     <div class="card-empty-state alone">
@@ -434,27 +434,27 @@
             <div class="form-group">
                 <label>Periodicidade</label>
                 <select id="q-periodicity" required>
-                    <option value="SINGLE">Unico</option>
+                    <option value="SINGLE">Único</option>
                     <option value="MONTHLY">Mensal</option>
                     <option value="ANNUAL">Anual</option>
                 </select>
             </div>
             <div class="form-group">
-                <label>Situacao</label>
+                <label>Situação</label>
                 <select id="q-status" required>
                     <option value="COMPLETED">Efetivado</option>
                     <option value="PENDING">Pendente</option>
                 </select>
             </div>
             <div class="form-group">
-                <label>Origem da movimentacao</label>
+                <label>Origem da movimentação</label>
                 <select id="q-origin" required></select>
                 <small class="form-help" id="q-origin-help"></small>
             </div>
             <div class="form-group" id="q-card-payment-group" hidden>
-                <label>Forma da compra no cartao</label>
+                <label>Forma da compra no cartão</label>
                 <select id="q-card-payment-mode">
-                    <option value="ONE_TIME">A vista</option>
+                    <option value="ONE_TIME">À vista</option>
                     <option value="INSTALLMENT">Parcelada</option>
                 </select>
             </div>
@@ -463,6 +463,7 @@
                 <input type="number" id="q-installment-count" min="2" max="60" step="1" value="2">
                 <small class="form-help" id="q-installment-preview"></small>
             </div>
+            <p class="form-help installment-edit-note" id="q-installment-edit-note" hidden></p>
             <div class="form-group">
                 <label>Valor</label>
                 <input type="number" id="q-amount" step="0.01" min="0" placeholder="0,00" required>
@@ -506,10 +507,7 @@
                 <label>Valor limite (R$)</label>
                 <input type="number" id="lim-value" step="0.01" min="0" placeholder="0,00" required>
             </div>
-            <div class="form-group">
-                <label>Valor utilizado (R$)</label>
-                <input type="number" id="lim-used-value" step="0.01" min="0" placeholder="0,00" required>
-            </div>
+            <p class="form-help">O valor utilizado é calculado automaticamente com as despesas efetivadas do mês.</p>
             <div class="form-group">
                 <label>Mês de referência</label>
                 <input type="month" id="lim-month">
@@ -582,7 +580,7 @@
             <div id="rel-filter-categories" class="report-filter-categories"></div>
         </div>
         <div class="report-filter-section">
-            <span class="report-filter-title">Origem da movimentacao</span>
+            <span class="report-filter-title">Origem da movimentação</span>
             <div id="rel-filter-origins" class="report-filter-categories"></div>
         </div>
         <div class="modal-footer">
@@ -690,7 +688,7 @@
     </div>
 </div>
 
-<script src="ui-shim.js?v=20260921-1"></script>
-<script src="app.js?v=20260921-1"></script>
+<script src="ui-shim.js?v=20261120-1"></script>
+<script src="app.js?v=20261120-1"></script>
 </body>
 </html>

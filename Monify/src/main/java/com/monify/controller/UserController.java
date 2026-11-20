@@ -4,14 +4,16 @@ import com.monify.dto.UserDTO;
 import com.monify.dto.LoginDTO;
 import com.monify.dto.ProfileDTO;
 import com.monify.entity.User;
+import com.monify.security.AuthInterceptor;
+import com.monify.service.AuthService;
 import com.monify.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -21,6 +23,7 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userService;
+    private final AuthService authService;
 
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@Valid @RequestBody UserDTO userDTO) {
@@ -51,6 +54,7 @@ public class UserController {
             response.put("id", user.getId());
             response.put("email", user.getEmail());
             response.put("name", user.getName());
+            response.put("token", authService.issueToken(user));
             response.put("message", "Login realizado com sucesso");
 
             return ResponseEntity.ok(response);
@@ -78,18 +82,12 @@ public class UserController {
         }
     }
 
-    @GetMapping
-    public ResponseEntity<?> getAllUsers() {
-        List<Map<String, Object>> users = userService.getAllUsers().stream()
-                .map(user -> {
-                    Map<String, Object> item = new HashMap<>();
-                    item.put("id", user.getId());
-                    item.put("email", user.getEmail());
-                    item.put("name", user.getName());
-                    return item;
-                })
-                .toList();
-        return ResponseEntity.ok(users);
+    @PostMapping("/logout")
+    public ResponseEntity<?> logoutUser(HttpServletRequest request) {
+        authService.revoke(AuthInterceptor.extractToken(request));
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Sessao encerrada");
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}")

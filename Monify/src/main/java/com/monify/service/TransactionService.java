@@ -96,9 +96,8 @@ public class TransactionService {
         return toDTOList(transactionRepository.findByUserIdAndTypeAndCategoryId(userId, type, categoryId));
     }
 
-    public Transaction updateTransaction(Long id, TransactionDTO dto) {
-        Transaction transaction = getTransactionById(id);
-        Long userId = transaction.getUser().getId();
+    public Transaction updateTransaction(Long userId, Long id, TransactionDTO dto) {
+        Transaction transaction = getOwnedTransaction(userId, id);
         boolean wasCompleted = isCompleted(transaction);
 
         if (wasCompleted) {
@@ -134,8 +133,8 @@ public class TransactionService {
         return saved;
     }
 
-    public void deleteTransaction(Long id) {
-        Transaction transaction = getTransactionById(id);
+    public void deleteTransaction(Long userId, Long id) {
+        Transaction transaction = getOwnedTransaction(userId, id);
         if (isCompleted(transaction)) {
             applyFinancialImpact(transaction, BigDecimal.ONE.negate());
         }
@@ -457,7 +456,7 @@ public class TransactionService {
         transactionRepository.save(next);
     }
 
-    private Transaction getOwnedTransaction(Long userId, Long id) {
+    public Transaction getOwnedTransaction(Long userId, Long id) {
         Transaction transaction = getTransactionById(id);
         if (!transaction.getUser().getId().equals(userId)) {
             throw new RuntimeException("Lancamento nao pertence ao usuario");

@@ -5,6 +5,7 @@ import com.monify.dto.ProfileDTO;
 import com.monify.entity.User;
 import com.monify.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -13,6 +14,9 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional
 public class UserService {
+
+    private static final String INVALID_CREDENTIALS = "Email ou senha incorretos";
+    private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
 
     private final UserRepository userRepository;
 
@@ -23,7 +27,7 @@ public class UserService {
 
         User user = User.builder()
                 .email(userDTO.getEmail())
-                .password(userDTO.getPassword()) // Em produção, usar BCrypt
+                .password(PASSWORD_ENCODER.encode(userDTO.getPassword()))
                 .name(userDTO.getName())
                 .build();
 
@@ -32,13 +36,23 @@ public class UserService {
 
     public User authenticateUser(String email, String password) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+                .orElseThrow(() -> new RuntimeException(INVALID_CREDENTIALS));
 
-        if (!user.getPassword().equals(password)) { // Em produção, usar BCrypt
-            throw new RuntimeException("Senha incorreta");
+        String stored = user.getPassword();
+        if (isBcryptHash(stored)) {
+            if (!PASSWORD_ENCODER.matches(password, stored)) {
+                throw new RuntimeException(INVALID_CREDENTIALS);
+            }
+            return user;
         }
 
-        return user;
+        // Contas antigas guardavam a senha em texto puro: confere uma ultima vez
+        // e ja grava o hash, para que a migracao aconteca no proximo login.
+        if (stored == null || !stored.equals(password)) {
+            throw new RuntimeException(INVALID_CREDENTIALS);
+        }
+        user.setPassword(PASSWORD_ENCODER.encode(password));
+        return userRepository.save(user);
     }
 
     public User getUserById(Long id) {
@@ -71,5 +85,9 @@ public class UserService {
 
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
+    }
+
+    private boolean isBcryptHash(String value) {
+        return value != null && value.matches("^\\$2[aby]\\$\\d{2}\\$.{53}$");
     }
 }

@@ -3,6 +3,7 @@ package com.monify.controller;
 import com.monify.dto.FinancialSummaryDTO;
 import com.monify.dto.TransactionDTO;
 import com.monify.entity.Transaction;
+import com.monify.security.AuthInterceptor;
 import com.monify.service.TransactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -36,9 +37,11 @@ public class TransactionController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getTransactionById(@PathVariable Long id) {
+    public ResponseEntity<?> getTransactionById(
+            @PathVariable Long id,
+            @RequestAttribute(AuthInterceptor.AUTH_USER_ID) Long authUserId) {
         try {
-            Transaction transaction = transactionService.getTransactionById(id);
+            Transaction transaction = transactionService.getOwnedTransaction(authUserId, id);
             return ResponseEntity.ok(transactionService.convertToDTO(transaction));
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
@@ -98,9 +101,12 @@ public class TransactionController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateTransaction(@PathVariable Long id, @Valid @RequestBody TransactionDTO transactionDTO) {
+    public ResponseEntity<?> updateTransaction(
+            @PathVariable Long id,
+            @RequestAttribute(AuthInterceptor.AUTH_USER_ID) Long authUserId,
+            @Valid @RequestBody TransactionDTO transactionDTO) {
         try {
-            Transaction transaction = transactionService.updateTransaction(id, transactionDTO);
+            Transaction transaction = transactionService.updateTransaction(authUserId, id, transactionDTO);
             return ResponseEntity.ok(transactionService.convertToDTO(transaction));
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
@@ -135,9 +141,11 @@ public class TransactionController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteTransaction(@PathVariable Long id) {
+    public ResponseEntity<?> deleteTransaction(
+            @PathVariable Long id,
+            @RequestAttribute(AuthInterceptor.AUTH_USER_ID) Long authUserId) {
         try {
-            transactionService.deleteTransaction(id);
+            transactionService.deleteTransaction(authUserId, id);
             Map<String, String> response = new HashMap<>();
             response.put("message", "Transação deletada com sucesso");
             return ResponseEntity.ok(response);

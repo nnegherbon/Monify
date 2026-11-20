@@ -1,5 +1,28 @@
 const API_BASE_URL = `${window.location.origin}/api`;
 let currentUser = null;
+
+/**
+ * fetch() para a API do Monify: envia o token de sessao e, se o servidor
+ * responder 401 (token ausente/expirado), volta para a tela de login.
+ */
+async function apiFetch(url, options = {}) {
+    const headers = new Headers(options.headers || {});
+    if (currentUser && currentUser.token) {
+        headers.set('Authorization', `Bearer ${currentUser.token}`);
+    }
+    const response = await fetch(url, { ...options, headers });
+    if (response.status === 401 && currentUser) {
+        logout({ silent: true });
+        alert('Sua sessão expirou. Faça login novamente.');
+    }
+    return response;
+}
+
+/** Data local no formato yyyy-MM-dd (toISOString usa UTC e "pula" o dia depois das 21h). */
+function todayISO() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 let allTransactions = [];
 let pendingPayables = [];
 let pendingReceivables = [];
@@ -33,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setGreeting();
     renderMonthLabels();
     setupDropdownClose();
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayISO();
     const qDate = document.getElementById('q-date');
     if (qDate) qDate.value = today;
     const limMonth = document.getElementById('lim-month');
@@ -90,9 +113,9 @@ async function handleLogin(e) {
             localStorage.setItem('user', JSON.stringify(data));
             showApp();
             await fetchAppData();
-            loadDashboard();
+            loadDashboard({ skipFetch: true });
         } else alert('Erro: ' + data.error);
-    } catch { alert('Erro ao fazer login. Verifique se o backend esta rodando em http://localhost:8080/api'); }
+    } catch { alert('Não foi possível fazer login. Verifique sua conexão e tente novamente.'); }
 }
 
 async function handleRegister(e) {
@@ -114,7 +137,13 @@ async function handleRegister(e) {
     } catch { alert('Erro ao cadastrar'); }
 }
 
-function logout() {
+function logout(options = {}) {
+    if (!options.silent && currentUser && currentUser.token) {
+        apiFetch(`${API_BASE_URL}/users/logout`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${currentUser.token}` }
+        }).catch(() => {});
+    }
     currentUser = null; allTransactions = [];
     pendingPayables = []; pendingReceivables = [];
     accounts = []; creditCards = []; limits = [];
@@ -127,11 +156,16 @@ function logout() {
 
 function checkAuthStatus() {
     const u = localStorage.getItem('user');
-    if (u) {
-        currentUser = JSON.parse(u);
-        showApp();
-        fetchAppData().then(() => loadDashboard());
+    if (!u) return;
+    try { currentUser = JSON.parse(u); } catch { currentUser = null; }
+    // Sessoes antigas (antes do token) precisam fazer login de novo.
+    if (!currentUser || !currentUser.token) {
+        currentUser = null;
+        localStorage.removeItem('user');
+        return;
     }
+    showApp();
+    fetchAppData().then(() => loadDashboard({ skipFetch: true }));
 }
 
 function showApp() {
@@ -164,7 +198,7 @@ async function fetchAppData() {
 async function fetchAllTransactions() {
     if (!currentUser) return;
     try {
-        const res = await fetch(`${API_BASE_URL}/transactions/user/${currentUser.id}`);
+        const res = await apiFetch(`${API_BASE_URL}/transactions/user/${currentUser.id}`);
         allTransactions = await res.json();
         if (!Array.isArray(allTransactions)) allTransactions = [];
     } catch(e) { console.error(e); allTransactions = []; }
@@ -174,8 +208,8 @@ async function fetchPendingTransactions() {
     if (!currentUser) return;
     try {
         const [payablesResponse, receivablesResponse] = await Promise.all([
-            fetch(`${API_BASE_URL}/transactions/user/${currentUser.id}/pending?type=EXPENSE`),
-            fetch(`${API_BASE_URL}/transactions/user/${currentUser.id}/pending?type=INCOME`)
+            apiFetch(`${API_BASE_URL}/transactions/user/${currentUser.id}/pending?type=EXPENSE`),
+            apiFetch(`${API_BASE_URL}/transactions/user/${currentUser.id}/pending?type=INCOME`)
         ]);
         if (!payablesResponse.ok || !receivablesResponse.ok) {
             throw new Error('Nao foi possivel carregar os lancamentos pendentes');
@@ -195,7 +229,7 @@ async function fetchPendingTransactions() {
 
 async function loadCategories() {
     try {
-        const res = await fetch(`${API_BASE_URL}/categories`);
+        const res = await apiFetch(`${API_BASE_URL}/categories`);
         if (!res.ok) throw new Error('Não foi possível carregar as categorias');
         const data = await res.json();
         categories = Array.isArray(data)
@@ -222,7 +256,7 @@ function syncCategoryConsumers() {
 async function fetchAccounts() {
     if (!currentUser) return;
     try {
-        const res = await fetch(`${API_BASE_URL}/users/${currentUser.id}/accounts`);
+        const res = await apiFetch(`${API_BASE_URL}/users/${currentUser.id}/accounts`);
         const data = await res.json();
         accounts = Array.isArray(data) ? data : [];
     } catch(e) { console.error(e); accounts = []; }
@@ -231,7 +265,7 @@ async function fetchAccounts() {
 async function fetchCreditCards() {
     if (!currentUser) return;
     try {
-        const res = await fetch(`${API_BASE_URL}/users/${currentUser.id}/cards`);
+        const res = await apiFetch(`${API_BASE_URL}/users/${currentUser.id}/cards`);
         const data = await res.json();
         creditCards = Array.isArray(data) ? data : [];
     } catch(e) { console.error(e); creditCards = []; }
@@ -240,7 +274,7 @@ async function fetchCreditCards() {
 async function fetchLimitsForMonth(monthKey) {
     if (!currentUser) return;
     try {
-        const res = await fetch(`${API_BASE_URL}/users/${currentUser.id}/limits?month=${monthKey}&type=EXPENSE`);
+        const res = await apiFetch(`${API_BASE_URL}/users/${currentUser.id}/limits?month=${monthKey}&type=EXPENSE`);
         const data = await res.json();
         limits = Array.isArray(data) ? data : [];
     } catch(e) { console.error(e); limits = []; }
@@ -267,8 +301,7 @@ function goHome() {
 }
 
 // ===== DASHBOARD =====
-async function loadDashboard() {
-    if (!currentUser) return;
+async function refreshFinancialData() {
     await Promise.all([
         fetchAllTransactions(),
         fetchPendingTransactions(),
@@ -276,6 +309,26 @@ async function loadDashboard() {
         fetchCreditCards(),
         fetchLimitsForMonth(getMonthKey(new Date()))
     ]);
+}
+
+/** Recarrega os dados uma unica vez e redesenha todas as telas. */
+async function refreshAfterChange() {
+    await refreshFinancialData();
+    await loadDashboard({ skipFetch: true });
+    renderLancamentos();
+    if (document.getElementById('relatorios-section')?.classList.contains('active')) {
+        renderReportFilterBadge();
+        renderCategoryReport(getReportMonthTransactions());
+        renderFlowReport();
+    }
+    if (document.getElementById('limites-section')?.classList.contains('active')) {
+        renderLimites();
+    }
+}
+
+async function loadDashboard(options = {}) {
+    if (!currentUser) return;
+    if (!options.skipFetch) await refreshFinancialData();
 
     const now = new Date();
     const monthTx = allTransactions.filter(t => isTransactionCompleted(t)).filter(t => {
@@ -354,7 +407,7 @@ function applyCardsLayout() {
 
 function openCustomizeCardsModal() {
     renderCustomizeCardsList();
-    document.getElementById('customize-cards-modal').style.display = 'flex';
+    showModal('customize-cards-modal');
 }
 
 function closeCustomizeCardsModal() {
@@ -494,7 +547,7 @@ function renderAccountsCard() {
             <div class="account-type">${formatAccountType(account.type)}</div>
         </div>
         <strong>${formatCurrency(account.balance)}</strong>
-        <button class="mini-action danger" onclick="deleteAccount(${account.id})" title="Excluir conta">x</button>
+        <button class="mini-action danger" onclick="deleteAccount(${account.id})" title="Excluir conta" aria-label="Excluir conta">✕</button>
     </div>`).join('');
 }
 
@@ -504,8 +557,8 @@ function renderCardsCard() {
 
     if (!creditCards.length) {
         body.innerHTML = `<div class="card-empty-state">
-            <span class="card-empty-icon card-icon-sm">CARD</span>
-            <p>Adicione o seu primeiro cartao</p>
+            <span class="card-empty-icon card-icon-sm" aria-hidden="true">💳</span>
+            <p>Adicione o seu primeiro cartão</p>
         </div>`;
         return;
     }
@@ -517,13 +570,13 @@ function renderCardsCard() {
             <span>${escapeHtml(card.name)}</span>
             <strong>${formatCurrency(card.usedAmount || 0)} / ${formatCurrency(card.limitAmount)}</strong>
         </div>
-        <button class="mini-action card-delete" onclick="deleteCreditCard(${card.id})" title="Excluir cartao">x</button>
+        <button class="mini-action card-delete" onclick="deleteCreditCard(${card.id})" title="Excluir cartão" aria-label="Excluir cartão">✕</button>
     </div>`).join('');
 }
 
 function openAccountsModal() {
     renderAccountsModalList();
-    document.getElementById('accounts-modal').style.display = 'flex';
+    showModal('accounts-modal');
 }
 
 function closeAccountsModal() {
@@ -532,7 +585,7 @@ function closeAccountsModal() {
 
 function openCardsModal() {
     renderCardsModalList();
-    document.getElementById('cards-modal').style.display = 'flex';
+    showModal('cards-modal');
 }
 
 function closeCardsModal() {
@@ -556,7 +609,7 @@ function renderCardsModalList() {
         <span>${escapeHtml(card.name)} <small>${escapeHtml(card.brand)} final ${escapeHtml(card.lastFour)}</small></span>
         <strong>${formatCurrency(card.usedAmount || 0)} / ${formatCurrency(card.limitAmount)}</strong>
         <button type="button" class="mini-action danger" onclick="deleteCreditCard(${card.id})">x</button>
-    </div>`).join('') : '<p class="modal-empty">Nenhum cartao cadastrado.</p>';
+    </div>`).join('') : '<p class="modal-empty">Nenhum cartão cadastrado.</p>';
 }
 
 async function handleAddAccount(e) {
@@ -567,7 +620,7 @@ async function handleAddAccount(e) {
     if (!name || !type || Number.isNaN(balance)) return;
 
     try {
-        const res = await fetch(`${API_BASE_URL}/users/${currentUser.id}/accounts`, {
+        const res = await apiFetch(`${API_BASE_URL}/users/${currentUser.id}/accounts`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, type, balance })
@@ -579,21 +632,21 @@ async function handleAddAccount(e) {
         renderAccountsModalList();
         loadDashboard();
     } catch(err) {
-        alert('Erro: ' + (err.error || 'nao foi possivel salvar a conta'));
+        alert('Erro: ' + (err.error || 'não foi possível salvar a conta'));
     }
 }
 
 async function deleteAccount(id) {
     if (!(await customConfirm('Excluir esta conta?'))) return;
     try {
-        const res = await fetch(`${API_BASE_URL}/users/${currentUser.id}/accounts/${id}`, { method: 'DELETE' });
+        const res = await apiFetch(`${API_BASE_URL}/users/${currentUser.id}/accounts/${id}`, { method: 'DELETE' });
         if (!res.ok) throw await res.json();
         await fetchAccounts();
         renderAccountsCard();
         renderAccountsModalList();
         loadDashboard();
     } catch(err) {
-        alert('Erro: ' + (err.error || 'nao foi possivel excluir a conta'));
+        alert('Erro: ' + (err.error || 'não foi possível excluir a conta'));
     }
 }
 
@@ -606,12 +659,12 @@ async function handleAddCard(e) {
     const feeInput = document.getElementById('card-fee').value;
     const feePercentage = feeInput ? parseFloat(feeInput) : 0;
     if (!name || !brand || !/^\d{4}$/.test(lastFour) || Number.isNaN(limitAmount)) {
-        alert('Preencha todos os campos. O final precisa ter 4 digitos.');
+        alert('Preencha todos os campos. O final precisa ter 4 dígitos.');
         return;
     }
 
     try {
-        const res = await fetch(`${API_BASE_URL}/users/${currentUser.id}/cards`, {
+        const res = await apiFetch(`${API_BASE_URL}/users/${currentUser.id}/cards`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, brand, limitAmount, lastFour, feePercentage })
@@ -623,26 +676,26 @@ async function handleAddCard(e) {
         renderCardsModalList();
         loadDashboard();
     } catch(err) {
-        alert('Erro: ' + (err.error || 'nao foi possivel salvar o cartao'));
+        alert('Erro: ' + (err.error || 'não foi possível salvar o cartão'));
     }
 }
 
 async function deleteCreditCard(id) {
-    if (!(await customConfirm('Excluir este cartao?'))) return;
+    if (!(await customConfirm('Excluir este cartão?'))) return;
     try {
-        const res = await fetch(`${API_BASE_URL}/users/${currentUser.id}/cards/${id}`, { method: 'DELETE' });
+        const res = await apiFetch(`${API_BASE_URL}/users/${currentUser.id}/cards/${id}`, { method: 'DELETE' });
         if (!res.ok) throw await res.json();
         await fetchCreditCards();
         renderCardsCard();
         renderCardsModalList();
         loadDashboard();
     } catch(err) {
-        alert('Erro: ' + (err.error || 'nao foi possivel excluir o cartao'));
+        alert('Erro: ' + (err.error || 'não foi possível excluir o cartão'));
     }
 }
 
 function formatAccountType(type) {
-    const map = { CHECKING: 'Conta corrente', SAVINGS: 'Poupanca', CASH: 'Dinheiro', INVESTMENT: 'Investimento' };
+    const map = { CHECKING: 'Conta corrente', SAVINGS: 'Poupança', CASH: 'Dinheiro', INVESTMENT: 'Investimento' };
     return map[type] || type;
 }
 
@@ -693,7 +746,7 @@ function buildPagarItem(t, isOverdue) {
             <div class="pagar-item-sub">${t.categoryName || ''} · Venc. ${formatDate(t.date)}</div>
         </div>
         <div class="pagar-item-amount" style="color:${isOverdue ? 'var(--red)' : '#f59e0b'}">
-            R$ ${Math.abs(t.amount).toFixed(2).replace('.',',')}
+            ${formatCurrency(Math.abs(t.amount))}
         </div>
     </div>`;
 }
@@ -715,7 +768,7 @@ function renderContasReceber() {
         .slice(0, 4);
 
     if (!receivables.length) {
-        body.innerHTML = '<div class="card-empty-state alone"><p>No momento voce nao possui contas a receber pendentes</p></div><button class="manage-btn" onclick="openQuickAdd(\'INCOME\')">Cadastrar conta a receber</button>';
+        body.innerHTML = '<div class="card-empty-state alone"><p>No momento você não possui contas a receber pendentes</p></div><button class="manage-btn" onclick="openQuickAdd(\'INCOME\')">Cadastrar conta a receber</button>';
         return;
     }
 
@@ -742,7 +795,7 @@ function renderPendingPayables() {
         .sort((a, b) => parseLocalDate(a.date) - parseLocalDate(b.date));
 
     if (!pending.length) {
-        body.innerHTML = '<div class="card-empty-state alone"><p>No momento voce nao possui contas a pagar</p></div>' +
+        body.innerHTML = '<div class="card-empty-state alone"><p>No momento você não possui contas a pagar</p></div>' +
             '<button class="manage-btn" onclick="openQuickAdd(\'EXPENSE\',true)">Cadastrar conta a pagar</button>';
         return;
     }
@@ -778,7 +831,7 @@ function renderPendingReceivables() {
         .slice(0, 4);
 
     if (!pending.length) {
-        body.innerHTML = '<div class="card-empty-state alone"><p>No momento voce nao possui contas a receber pendentes</p></div>' +
+        body.innerHTML = '<div class="card-empty-state alone"><p>No momento você não possui contas a receber pendentes</p></div>' +
             '<button class="manage-btn" onclick="openQuickAdd(\'INCOME\',true)">Cadastrar conta a receber</button>';
         return;
     }
@@ -808,7 +861,7 @@ async function settleTransaction(id) {
     const transaction = allTransactions.find(item => Number(item.id) === Number(id));
     if (!transaction) return;
     if (!transaction.accountId && !transaction.creditCardId) {
-        alert('Selecione a origem da movimentacao antes de efetivar o lancamento.');
+        alert('Selecione a origem da movimentação antes de efetivar o lançamento.');
         openEditTransaction(id);
         return;
     }
@@ -816,17 +869,15 @@ async function settleTransaction(id) {
     const action = transaction.type === 'INCOME' ? 'receber' : 'pagar';
     if (!(await customConfirm(`Deseja ${action} ${transaction.description}?`))) return;
     try {
-        const response = await fetch(
+        const response = await apiFetch(
             `${API_BASE_URL}/transactions/${id}/settle?userId=${currentUser.id}`,
             { method: 'PATCH' }
         );
         if (!response.ok) throw await response.json();
-        await Promise.all([fetchAllTransactions(), fetchPendingTransactions(), fetchAccounts(), fetchCreditCards()]);
-        await loadDashboard();
-        renderLancamentos();
-        loadRelatorios();
+        alert(transaction.type === 'INCOME' ? 'Recebimento registrado.' : 'Pagamento registrado.');
+        await refreshAfterChange();
     } catch (error) {
-        alert('Erro: ' + (error.error || error.message || 'nao foi possivel efetivar o lancamento'));
+        alert('Erro: ' + (error.error || error.message || 'não foi possível efetivar o lançamento'));
     }
 }
 
@@ -865,7 +916,7 @@ function renderGastosCard() {
     const colors = ['#EFB4B4','#B8863B','#C1D8C0','#f59e0b','#D9A65C','#C0392B','#BEBEBE','#1F9E6D'];
 
     listEl.innerHTML = sorted.slice(0,5).map(([name, g], i) => {
-        const pct = ((g.total/total)*100).toFixed(1);
+        const pct = formatNumber((g.total/total)*100, 1);
         return `<div class="gastos-item">
             <div class="gastos-item-icon" style="background:${colors[i]||'#888'}">${g.icon}</div>
             <div class="gastos-item-name">${name}</div>
@@ -927,7 +978,7 @@ function openQuickAdd(type, pending = false) {
     const titleEl = document.getElementById('modal-title');
     if (titleEl) titleEl.textContent = type === 'EXPENSE' ? 'Nova Despesa' : 'Nova Receita';
     const dateEl = document.getElementById('q-date');
-    if (dateEl) dateEl.value = new Date().toISOString().split('T')[0];
+    if (dateEl) dateEl.value = todayISO();
     populateModalCategories();
     populateMovementOrigins();
     syncInstallmentControls();
@@ -936,7 +987,35 @@ function openQuickAdd(type, pending = false) {
         return;
     }
     if (form) form.dataset.mode = 'create';
-    document.getElementById('quick-modal').style.display = 'flex';
+    setInstallmentEditLock(false);
+    showModal('quick-modal');
+}
+
+/** Abre um modal sempre com a rolagem no topo (antes abria onde parou da ultima vez). */
+function showModal(id) {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modal.style.display = 'flex';
+    modal.scrollTop = 0;
+    modal.querySelectorAll('.modal-box').forEach(box => { box.scrollTop = 0; });
+}
+
+/**
+ * Na edicao de uma parcela, a forma de pagamento e a quantidade de parcelas
+ * nao podem mudar (a edicao vale so para esta parcela).
+ */
+function setInstallmentEditLock(locked, transaction = null) {
+    const paymentMode = document.getElementById('q-card-payment-mode');
+    const installmentInput = document.getElementById('q-installment-count');
+    const note = document.getElementById('q-installment-edit-note');
+    if (paymentMode) paymentMode.disabled = locked;
+    if (installmentInput) installmentInput.readOnly = locked;
+    if (note) {
+        note.hidden = !locked;
+        note.textContent = locked && transaction
+            ? `Parcela ${transaction.installmentNumber}/${transaction.installmentCount} de uma compra de ${formatCurrency(transaction.installmentTotalAmount)}. As alterações valem só para esta parcela.`
+            : '';
+    }
 }
 function closeQuickModal() {
     document.getElementById('quick-modal').style.display = 'none';
@@ -968,15 +1047,15 @@ function openEditTransaction(id) {
         ? `ACCOUNT:${transaction.accountId}`
         : transaction.creditCardId ? `CREDIT_CARD:${transaction.creditCardId}` : '';
     populateMovementOrigins(originValue);
-    document.getElementById('q-card-payment-mode').value = Number(transaction.installmentCount || 1) > 1
-        ? 'INSTALLMENT'
-        : 'ONE_TIME';
-    document.getElementById('q-installment-count').value = Number(transaction.installmentCount || 2);
-    syncInstallmentControls(transaction.installmentTotalAmount);
+    const isInstallment = Number(transaction.installmentCount || 1) > 1;
+    document.getElementById('q-card-payment-mode').value = isInstallment ? 'INSTALLMENT' : 'ONE_TIME';
+    document.getElementById('q-installment-count').value = isInstallment ? Number(transaction.installmentCount) : 2;
+    syncInstallmentControls();
+    setInstallmentEditLock(isInstallment, transaction);
     document.getElementById('modal-title').textContent = 'Editar Lançamento';
     const form = document.getElementById('quick-modal').querySelector('form');
     if (form) form.dataset.mode = 'edit';
-    document.getElementById('quick-modal').style.display = 'flex';
+    showModal('quick-modal');
 }
 
 function populateModalCategories() {
@@ -1017,7 +1096,7 @@ function populateMovementOrigins(selectedValue = '') {
     const cardOptions = type === 'EXPENSE'
         ? creditCards.map(card => ({
             value: `CREDIT_CARD:${card.id}`,
-            label: `Cartao de credito - ${card.name} final ${card.lastFour}`
+            label: `Cartão de crédito - ${card.name} final ${card.lastFour}`
         }))
         : [];
     const options = [...accountOptions, ...cardOptions];
@@ -1035,9 +1114,9 @@ function populateMovementOrigins(selectedValue = '') {
     if (help) {
         help.textContent = options.length
             ? type === 'INCOME'
-                ? 'Receitas podem ser creditadas em conta corrente ou poupanca.'
-                : 'Despesas podem sair de uma conta ou utilizar um cartao.'
-            : 'Crie uma conta corrente, poupanca ou cartao no Dashboard.';
+                ? 'Receitas podem ser creditadas em conta corrente ou poupança.'
+                : 'Despesas podem sair de uma conta ou utilizar um cartão.'
+            : 'Crie uma conta corrente, poupança ou cartão na home.';
     }
     syncTransactionSubmitAvailability();
     syncInstallmentControls();
@@ -1056,7 +1135,12 @@ function syncInstallmentControls(totalOverride = null) {
 
     if (paymentGroup) paymentGroup.hidden = !isCardExpense;
     if (installmentGroup) installmentGroup.hidden = !isInstallment;
-    if (installmentInput) installmentInput.required = isInstallment;
+    // Campo escondido com min=2 deixava o formulario invalido sem mostrar erro
+    // (o botao Salvar da edicao nao fazia nada). Desabilitado, ele nao e validado.
+    if (installmentInput) {
+        installmentInput.required = isInstallment;
+        installmentInput.disabled = !isInstallment;
+    }
     if (periodicity) {
         if (isInstallment) periodicity.value = 'SINGLE';
         periodicity.disabled = isInstallment;
@@ -1065,15 +1149,18 @@ function syncInstallmentControls(totalOverride = null) {
     const count = Number(installmentInput?.value || 0);
     const amount = Number((totalOverride ?? document.getElementById('q-amount')?.value) || 0);
     const preview = document.getElementById('q-installment-preview');
+    const editingInstallment = editingTransactionId != null && document.getElementById('q-card-payment-mode')?.disabled;
     if (preview) {
-        if (isInstallment && count > 1 && amount > 0) {
+        if (editingInstallment) {
+            preview.textContent = '';
+        } else if (isInstallment && count > 1 && amount > 0) {
             let text = `${count} parcelas de aproximadamente ${formatCurrency(amount / count)}`;
             const cardId = Number(origin.split(':')[1]);
             const card = creditCards.find(c => Number(c.id) === cardId);
             const fee = Number(card?.feePercentage || 0);
             if (fee > 0) {
                 const totalWithFee = amount * (1 + fee / 100);
-                text += ` · com a taxa da bandeira (${fee.toFixed(2)}%) o total estimado sobe para ${formatCurrency(totalWithFee)}`;
+                text += ` · com a taxa da bandeira (${formatPercent(fee, 2)}) o total estimado sobe para ${formatCurrency(totalWithFee)}`;
             }
             preview.textContent = text;
         } else {
@@ -1112,7 +1199,7 @@ function openNewCategoryModal(context) {
     if (nameInput) nameInput.value = '';
     if (iconInput) iconInput.value = '';
     if (colorInput) colorInput.value = '#B8863B';
-    document.getElementById('new-category-modal').style.display = 'flex';
+    showModal('new-category-modal');
 }
 
 function closeNewCategoryModal() {
@@ -1127,7 +1214,7 @@ async function handleCreateCategory(event) {
     if (!name) { alert('Informe um nome para a categoria.'); return; }
 
     try {
-        const res = await fetch(`${API_BASE_URL}/categories`, {
+        const res = await apiFetch(`${API_BASE_URL}/categories`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, icon, color })
@@ -1189,17 +1276,18 @@ async function handleQuickAdd(e) {
     const installmentCount = isCardExpense && paymentMode === 'INSTALLMENT'
         ? Number(document.getElementById('q-installment-count').value)
         : 1;
+    const editingInstallment = Boolean(editingTransactionId) && document.getElementById('q-card-payment-mode').disabled;
     const categoryId = parseInt(document.getElementById('q-category').value, 10);
     if (!categories.some(category => Number(category.id) === categoryId)) {
         alert('Selecione uma categoria válida.');
         return;
     }
     if (!originValue || !Number.isFinite(amount) || amount <= 0) {
-        alert('Informe um valor valido e selecione a origem da movimentacao.');
+        alert('Informe um valor válido e selecione a origem da movimentação.');
         return;
     }
-    if (paymentMode === 'INSTALLMENT' && (!isCardExpense || !Number.isInteger(installmentCount) || installmentCount <= 1)) {
-        alert('Compras parceladas exigem cartao de credito e quantidade de parcelas maior que 1.');
+    if (!editingInstallment && paymentMode === 'INSTALLMENT' && (!isCardExpense || !Number.isInteger(installmentCount) || installmentCount <= 1)) {
+        alert('Compras parceladas exigem cartão de crédito e quantidade de parcelas maior que 1.');
         return;
     }
     const [originType, originIdValue] = originValue.split(':');
@@ -1207,11 +1295,15 @@ async function handleQuickAdd(e) {
     const originPayload = originType === 'ACCOUNT'
         ? { originType, accountId: originId, creditCardId: null }
         : { originType, accountId: null, creditCardId: originId };
+    const submitButton = document.getElementById('transaction-submit-button');
+    const submitLabel = submitButton ? submitButton.textContent : '';
+    if (submitButton) { submitButton.disabled = true; submitButton.textContent = 'Salvando...'; }
+    const wasEditing = Boolean(editingTransactionId);
     try {
         const url = editingTransactionId
             ? `${API_BASE_URL}/transactions/${editingTransactionId}`
             : `${API_BASE_URL}/transactions?userId=${currentUser.id}`;
-        const res = await fetch(url, {
+        const res = await apiFetch(url, {
             method: editingTransactionId ? 'PUT' : 'POST',
             headers:{'Content-Type':'application/json'},
             body: JSON.stringify({
@@ -1230,11 +1322,13 @@ async function handleQuickAdd(e) {
             closeQuickModal();
             document.getElementById('quick-modal').querySelector('form').reset();
             editingTransactionId = null;
-            await fetchAllTransactions();
-            loadDashboard();
-            loadLancamentos();
+            alert(wasEditing ? 'Lançamento atualizado.' : 'Lançamento salvo.');
+            await refreshAfterChange();
         } else { const err = await res.json(); alert('Erro: ' + err.error); }
     } catch { alert('Erro ao salvar'); }
+    finally {
+        if (submitButton) { submitButton.textContent = submitLabel; syncTransactionSubmitAvailability(); }
+    }
 }
 
 function closeModalOutside(e) {
@@ -1285,7 +1379,10 @@ function renderLancamentos() {
     const today = new Date(); today.setHours(0,0,0,0);
 
     if (!transactions.length) {
-        list.innerHTML = '<div class="page-empty-state"><div class="empty-icon-circle">!</div><p>Nenhuma movimentação no período.</p></div>';
+        const emptyMessage = lancSearchTerm
+            ? `Nenhum lançamento encontrado para "${escapeHtml(lancSearchTerm)}".`
+            : 'Nenhuma movimentação no período.';
+        list.innerHTML = `<div class="page-empty-state"><div class="empty-icon-circle">!</div><p>${emptyMessage}</p></div>`;
         updateLancFooter([]);
         return;
     }
@@ -1310,7 +1407,7 @@ function renderLancamentos() {
                 <div class="lanc-item-sub">${escapeHtml(t.categoryName || '')} - ${formatDate(t.date)} - ${escapeHtml(periodicityLabel)} - ${escapeHtml(t.originDescription || 'Origem nao informada')}</div>
             </div>
             <div class="lanc-item-amount ${isExp ? 'expense' : 'income'}">
-                ${isExp ? '-' : '+'}R$ ${Math.abs(t.amount).toFixed(2).replace('.',',')}
+                ${isExp ? '-' : '+'}${formatCurrency(Math.abs(t.amount))}
             </div>
             <div class="lanc-actions">
                 ${isPending ? `<button onclick="settleTransaction(${t.id})" title="Efetivar">${isExp ? 'Pagar' : 'Receber'}</button>` : ''}
@@ -1332,16 +1429,16 @@ function updateLancFooter(transactions) {
     const pendingExpense = pending.filter(t => t.type === 'EXPENSE').reduce((a,t) => a + Number(t.amount), 0);
     const saldo = income - expense;
     const forecast = saldo + pendingIncome - pendingExpense;
-    setElText('f-saldo', saldo.toFixed(2).replace('.',','));
-    setElText('f-previsto', forecast.toFixed(2).replace('.',','));
+    setElText('f-saldo', formatNumber(saldo));
+    setElText('f-previsto', formatNumber(forecast));
     const expandedRows = document.querySelectorAll('#lanc-summary-expanded .lanc-footer-row span:last-child');
     if (expandedRows.length >= 7) {
-        expandedRows[1].textContent = income.toFixed(2).replace('.', ',');
-        expandedRows[2].textContent = pendingIncome.toFixed(2).replace('.', ',');
-        expandedRows[3].textContent = expense.toFixed(2).replace('.', ',');
-        expandedRows[4].textContent = pendingExpense.toFixed(2).replace('.', ',');
-        expandedRows[5].textContent = saldo.toFixed(2).replace('.', ',');
-        expandedRows[6].textContent = forecast.toFixed(2).replace('.', ',');
+        expandedRows[1].textContent = formatNumber(income);
+        expandedRows[2].textContent = formatNumber(pendingIncome);
+        expandedRows[3].textContent = formatNumber(expense);
+        expandedRows[4].textContent = formatNumber(pendingExpense);
+        expandedRows[5].textContent = formatNumber(saldo);
+        expandedRows[6].textContent = formatNumber(forecast);
     }
 }
 
@@ -1426,8 +1523,8 @@ function setupDropdownClose() {
 async function deleteTransaction(id) {
     if (!(await customConfirm('Tem certeza que deseja deletar esta transação?'))) return;
     try {
-        const res = await fetch(`${API_BASE_URL}/transactions/${id}`, { method:'DELETE' });
-        if (res.ok) { await fetchAllTransactions(); renderLancamentos(); loadDashboard(); }
+        const res = await apiFetch(`${API_BASE_URL}/transactions/${id}`, { method:'DELETE' });
+        if (res.ok) { alert('Lançamento excluído.'); await refreshAfterChange(); }
         else alert('Erro ao deletar');
     } catch { alert('Erro ao deletar'); }
 }
@@ -1558,7 +1655,7 @@ function renderCategoryBlock(label, groups, chartId) {
             <div class="rel-item-name">${escapeHtml(group.name)}</div>
             <div class="rel-item-vals">
                 <span class="rel-item-amount">${formatCurrency(group.total)}</span>
-                <span class="rel-item-pct">${percentage.toFixed(1)}%</span>
+                <span class="rel-item-pct">${formatPercent(percentage, 1)}</span>
             </div>
         </div>`;
     }).join('');
@@ -1661,7 +1758,7 @@ function openReportFiltersModal() {
     populateReportFilterOptions();
     document.getElementById('rel-filter-income').checked = reportFilters.types.has('INCOME');
     document.getElementById('rel-filter-expense').checked = reportFilters.types.has('EXPENSE');
-    document.getElementById('report-filters-modal').style.display = 'flex';
+    showModal('report-filters-modal');
 }
 
 function closeReportFiltersModal() {
@@ -1976,8 +2073,9 @@ async function renderLimites() {
         const used = getLimitUsed(limit);
         const amount = Number(limit.amount || 0);
         const remaining = getLimitRemaining(limit);
-        const percentage = Math.min(Number(limit.percentage || 0), 100);
-        const percentageLabel = percentage.toFixed(1);
+        const realPercentage = Number(limit.percentage || 0);
+        const percentage = Math.min(realPercentage, 100);
+        const percentageLabel = formatNumber(realPercentage, 1);
         const fillClass = percentage >= 100 ? 'over' : percentage >= 75 ? 'warn' : '';
         const statusColor = percentage >= 100 ? 'var(--red)' : percentage >= 75 ? '#f59e0b' : 'var(--green)';
         const isGeneral = limit.scope === 'GENERAL';
@@ -1994,7 +2092,7 @@ async function renderLimites() {
                 '<div class="lim-item-vals">' + formatCurrency(used) + ' / ' + formatCurrency(amount) + '</div>' +
             '</div>' +
             '<div class="lim-progress-bar"><div class="lim-progress-fill ' + fillClass +
-                '" style="width:' + percentageLabel + '%"></div></div>' +
+                '" style="width:' + percentage.toFixed(1) + '%"></div></div>' +
             '<div class="limit-metrics">' +
                 '<span class="limit-metric" style="color:' + statusColor + '">' +
                     percentageLabel + '% utilizado</span>' +
@@ -2110,11 +2208,10 @@ function openLimitModal(limitId = null) {
 
     if (limit) {
         document.getElementById('lim-value').value = Number(limit.amount || 0);
-        document.getElementById('lim-used-value').value = getLimitUsed(limit);
         monthInput.value = limit.month;
     }
 
-    document.getElementById('limit-modal').style.display = 'flex';
+    showModal('limit-modal');
 }
 
 function toggleLimitScope() {
@@ -2152,7 +2249,6 @@ async function handleAddLimit(event) {
     const scope = document.getElementById('lim-scope')?.value || 'CATEGORY';
     const isGeneral = scope === 'GENERAL';
     const amount = parseFloat(document.getElementById('lim-value').value);
-    const usedAmount = parseFloat(document.getElementById('lim-used-value').value || '0');
     const month = document.getElementById('lim-month').value;
 
     let categoryKey = 'geral';
@@ -2165,12 +2261,8 @@ async function handleAddLimit(event) {
         categoryName = category.name;
     }
 
-    if (!Number.isFinite(amount) || !Number.isFinite(usedAmount) || !month) {
-        alert('Preencha todos os campos do limite.');
-        return;
-    }
-    if (amount <= 0 || usedAmount < 0 || usedAmount > amount) {
-        alert('O valor utilizado deve estar entre zero e o valor total do limite.');
+    if (!Number.isFinite(amount) || amount <= 0 || !month) {
+        alert('Informe um valor limite maior que zero e o mês de referência.');
         return;
     }
 
@@ -2178,14 +2270,13 @@ async function handleAddLimit(event) {
         const endpoint = editingLimitId == null
             ? API_BASE_URL + '/users/' + currentUser.id + '/limits'
             : API_BASE_URL + '/users/' + currentUser.id + '/limits/' + editingLimitId;
-        const response = await fetch(endpoint, {
+        const response = await apiFetch(endpoint, {
             method: editingLimitId == null ? 'POST' : 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 categoryKey: categoryKey,
                 categoryName: categoryName,
                 amount: amount,
-                usedAmount: usedAmount,
                 month: month,
                 limitType: 'EXPENSE',
                 scope: scope
@@ -2194,11 +2285,10 @@ async function handleAddLimit(event) {
         if (!response.ok) throw await response.json();
 
         closeLimitModal();
+        alert('Limite salvo.');
         await renderLimites();
         await fetchLimitsForMonth(getMonthKey(new Date()));
         renderLimitesCard();
-        loadRelatorios();
-        loadDashboard();
     } catch (error) {
         alert('Erro: ' + (error.error || error.message || 'não foi possível salvar o limite'));
     }
@@ -2207,7 +2297,7 @@ async function handleAddLimit(event) {
 async function removeLimit(id) {
     if (!(await customConfirm('Remover este limite?'))) return;
     try {
-        const response = await fetch(
+        const response = await apiFetch(
             API_BASE_URL + '/users/' + currentUser.id + '/limits/' + id,
             { method: 'DELETE' }
         );
@@ -2216,8 +2306,6 @@ async function removeLimit(id) {
         await renderLimites();
         await fetchLimitsForMonth(getMonthKey(new Date()));
         renderLimitesCard();
-        loadRelatorios();
-        loadDashboard();
     } catch (error) {
         alert('Erro: ' + (error.error || error.message || 'não foi possível remover o limite'));
     }
@@ -2238,7 +2326,7 @@ function closeProfileMenu() {
 function openProfileModal() {
     closeProfileMenu();
     syncProfileForm();
-    document.getElementById('profile-modal').style.display = 'flex';
+    showModal('profile-modal');
 }
 
 function closeProfileModal() {
@@ -2264,7 +2352,7 @@ async function handleProfileUpdate(e) {
     if (!name || !email) return;
 
     try {
-        const res = await fetch(`${API_BASE_URL}/users/${currentUser.id}`, {
+        const res = await apiFetch(`${API_BASE_URL}/users/${currentUser.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, email })
@@ -2276,7 +2364,7 @@ async function handleProfileUpdate(e) {
         showApp();
         closeProfileModal();
     } catch(err) {
-        alert('Erro: ' + (err.error || 'nao foi possivel atualizar o perfil'));
+        alert('Erro: ' + (err.error || 'não foi possível atualizar o perfil'));
     }
 }
 
@@ -2306,7 +2394,7 @@ function isTransactionCompleted(transaction) {
 }
 
 function getPeriodicityLabel(periodicity) {
-    const labels = { SINGLE: 'Unico', MONTHLY: 'Mensal', ANNUAL: 'Anual' };
+    const labels = { SINGLE: 'Único', MONTHLY: 'Mensal', ANNUAL: 'Anual' };
     return labels[periodicity] || labels.SINGLE;
 }
 
@@ -2325,14 +2413,31 @@ function getAvailableOrigins() {
         }));
     const cardOrigins = creditCards.map(card => ({
         value: `CREDIT_CARD:${card.id}`,
-        label: `Cartao de credito - ${card.name} final ${card.lastFour}`
+        label: `Cartão de crédito - ${card.name} final ${card.lastFour}`
     }));
     return [...accountOrigins, ...cardOrigins];
 }
 
+const CURRENCY_FORMAT = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+/** R$ 10.000,00 (com separador de milhar). */
 function formatCurrency(v) {
-    if (!v) v = 0;
-    return `R$ ${parseFloat(v).toFixed(2).replace('.',',')}`;
+    const value = Number(v);
+    return CURRENCY_FORMAT.format(Number.isFinite(value) ? value : 0);
+}
+
+/** 10.000,00 (sem o simbolo da moeda). */
+function formatNumber(v, digits = 2) {
+    const value = Number(v);
+    return (Number.isFinite(value) ? value : 0).toLocaleString('pt-BR', {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits
+    });
+}
+
+/** 12,5% */
+function formatPercent(v, digits = 1) {
+    return `${formatNumber(v, digits)}%`;
 }
 function formatDate(d) {
     const date = parseLocalDate(d);

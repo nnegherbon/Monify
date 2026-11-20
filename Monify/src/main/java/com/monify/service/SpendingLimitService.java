@@ -5,6 +5,7 @@ import com.monify.entity.Category;
 import com.monify.entity.SpendingLimit;
 import com.monify.entity.User;
 import com.monify.repository.SpendingLimitRepository;
+import com.monify.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.Normalizer;
+import java.time.DateTimeException;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -26,6 +29,7 @@ public class SpendingLimitService {
     private static final String GENERAL_CATEGORY_NAME = "Geral (mês todo)";
 
     private final SpendingLimitRepository spendingLimitRepository;
+    private final TransactionRepository transactionRepository;
     private final UserService userService;
     private final CategoryService categoryService;
 
@@ -127,22 +131,20 @@ public class SpendingLimitService {
             SpendingLimit.LimitType limitType,
             SpendingLimit.Scope scope) {
         BigDecimal amount = dto.getAmount();
-        BigDecimal usedAmount = dto.getUsedAmount() != null ? dto.getUsedAmount() : BigDecimal.ZERO;
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new RuntimeException("Valor limite deve ser maior que zero");
         }
-        if (usedAmount.compareTo(BigDecimal.ZERO) < 0) {
-            throw new RuntimeException("Valor utilizado nao pode ser negativo");
-        }
-        if (usedAmount.compareTo(amount) > 0) {
-            throw new RuntimeException("Valor utilizado nao pode ultrapassar o limite");
-        }
+        parseMonth(dto.getMonth());
 
         limit.setCategoryKey(categoryKey);
         limit.setCategoryName(categoryName);
         limit.setMonth(dto.getMonth());
         limit.setAmount(amount);
-        limit.setUsedAmount(usedAmount);
+        // O valor utilizado agora e calculado a partir dos lancamentos (ver calculateSpent).
+        // A coluna used_amount fica so por compatibilidade com dados antigos.
+        if (limit.getUsedAmount() == null) {
+            limit.setUsedAmount(BigDecimal.ZERO);
+        }
         limit.setLimitType(limitType != null ? limitType : SpendingLimit.LimitType.EXPENSE);
         limit.setScope(scope != null ? scope : SpendingLimit.Scope.CATEGORY);
     }
@@ -173,9 +175,35 @@ public class SpendingLimitService {
                 .replaceAll("(^-|-$)", "");
     }
 
+    /**
+     * Soma as despesas efetivadas do mes do limite: de todas as categorias para
+     * o limite geral, ou so da categoria do limite.
+     */
+    private BigDecimal calculateSpent(SpendingLimit limit) {
+        if (limit.getLimitType() == SpendingLimit.LimitType.INCOME) {
+            return limit.getUsedAmount() != null ? limit.getUsedAmount() : BigDecimal.ZERO;
+        }
+        YearMonth month = parseMonth(limit.getMonth());
+        Long userId = limit.getUser().getId();
+        BigDecimal spent = limit.getScope() == SpendingLimit.Scope.GENERAL
+                ? transactionRepository.sumCompletedExpenses(
+                        userId, month.atDay(1), month.atEndOfMonth())
+                : transactionRepository.sumCompletedExpensesByCategory(
+                        userId, month.atDay(1), month.atEndOfMonth(), limit.getCategoryName());
+        return (spent != null ? spent : BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private YearMonth parseMonth(String month) {
+        try {
+            return YearMonth.parse(month);
+        } catch (DateTimeException | NullPointerException e) {
+            throw new RuntimeException("Mes deve estar no formato yyyy-MM");
+        }
+    }
+
     private SpendingLimitDTO toDTO(SpendingLimit limit) {
         BigDecimal amount = limit.getAmount() != null ? limit.getAmount() : BigDecimal.ZERO;
-        BigDecimal usedAmount = limit.getUsedAmount() != null ? limit.getUsedAmount() : BigDecimal.ZERO;
+        BigDecimal usedAmount = calculateSpent(limit);
         BigDecimal remaining = amount.subtract(usedAmount).max(BigDecimal.ZERO);
         BigDecimal percentage = BigDecimal.ZERO;
         if (amount.compareTo(BigDecimal.ZERO) > 0) {

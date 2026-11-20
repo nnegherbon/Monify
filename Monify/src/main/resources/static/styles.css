@@ -1057,7 +1057,24 @@ body {
     .hero-quick { border-left:none; border-top:1px solid rgba(255,255,255,0.15); padding-left:0; padding-top:1rem; width:100%; }
     .section { padding:1.25rem; }
     .navbar { padding:0 1.25rem; }
-    .navbar-menu { display:none; }
+    /* Antes o menu sumia (display:none) e nao havia como sair da home no
+       celular/tablet. Agora vira uma barra fixa na parte de baixo da tela. */
+    .navbar-menu {
+        position:fixed; left:0; right:0; bottom:0; z-index:300;
+        display:flex; justify-content:space-around; align-items:center; gap:0;
+        height:calc(58px + env(safe-area-inset-bottom, 0px));
+        padding:0 0.5rem env(safe-area-inset-bottom, 0px);
+        background:#06141F; border-top:1px solid rgba(255,255,255,0.1);
+        box-shadow:0 -8px 24px rgba(0,0,0,0.35);
+    }
+    .navbar-menu .nav-btn {
+        flex:1; height:100%; font-size:0.85rem; padding:0;
+        display:flex; align-items:center; justify-content:center;
+    }
+    .navbar-menu .nav-btn::after { bottom:10px; left:25%; }
+    .navbar-menu .nav-btn.active::after { width:50%; }
+    #app-page { padding-bottom:calc(70px + env(safe-area-inset-bottom, 0px)); }
+    #hbj-toast-host { bottom:calc(80px + env(safe-area-inset-bottom, 0px)) !important; }
     .rel-content { flex-direction:column; }
     .rel-chart { width:100%; display:flex; justify-content:center; }
     .page-header-actions { width:100%; justify-content:flex-start; }
@@ -1074,6 +1091,10 @@ body {
 
 @media (max-width:600px) {
     .page-tab-content { padding:1rem; }
+    .hero-stats { flex-wrap:wrap; gap:0.75rem 1.25rem; }
+    .hero-stat { padding-right:0; flex:1 1 130px; min-width:0; }
+    .stat-value { white-space:nowrap; }
+    .hero-divider, .hero-chart-icon { display:none; }
     .rel-toolbar { align-items:stretch; }
     .report-view-tabs { width:100%; margin-left:0; }
     .report-view-tab { flex:1; }
@@ -1082,4 +1103,9 @@ body {
     .report-filter-categories { grid-template-columns:1fr; }
     .report-chart-canvas { height:230px; }
     .limit-metrics { align-items:flex-start; flex-direction:column; gap:0.25rem; }
+}
+
+.installment-edit-note {
+    margin:-0.5rem 0 1rem; padding:0.6rem 0.75rem; border-radius:8px;
+    background:rgba(184,134,59,0.12); color:#5c4520; font-size:0.8rem; line-height:1.4;
 }
