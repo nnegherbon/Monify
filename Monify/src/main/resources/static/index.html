@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="styles.css?v=20261120-3">
+    <link rel="stylesheet" href="styles.css?v=20261120-4">
 </head>
 <body>
 
@@ -46,11 +46,11 @@
                     </div>
                     <div class="form-group">
                         <label>Email</label>
-                        <input type="email" id="login-email" placeholder="seu@email.com" required>
+                        <input type="email" id="login-email" placeholder="seu@email.com" autocomplete="email" required>
                     </div>
                     <div class="form-group">
                         <label>Senha</label>
-                        <input type="password" id="login-password" placeholder="••••••••" required>
+                        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" required>
                     </div>
                     <button type="submit" class="btn btn-primary">Entrar</button>
                     <p class="switch-hint">Não tem conta? <a onclick="switchTab('register')">Cadastre-se</a></p>
@@ -70,7 +70,7 @@
                     </div>
                     <div class="form-group">
                         <label>Senha</label>
-                        <input type="password" id="register-password" placeholder="Mínimo 6 caracteres" minlength="6" required>
+                        <input type="password" id="register-password" placeholder="Mínimo 8 caracteres, com letras e números" minlength="8" pattern="(?=.*[A-Za-z])(?=.*\d).{8,}" title="Use pelo menos 8 caracteres, com letras e números" autocomplete="new-password" required>
                     </div>
                     <button type="submit" class="btn btn-primary">Criar conta</button>
                     <p class="switch-hint">Já tem conta? <a onclick="switchTab('login')">Faça login</a></p>
@@ -468,11 +468,11 @@
             <p class="form-help installment-edit-note" id="q-installment-edit-note" hidden></p>
             <div class="form-group">
                 <label>Valor</label>
-                <input type="number" id="q-amount" step="0.01" min="0" placeholder="0,00" required>
+                <input type="number" id="q-amount" step="0.01" min="0.01" max="99999999.99" placeholder="0,00" required>
             </div>
             <div class="form-group">
                 <label>Descrição</label>
-                <input type="text" id="q-description" placeholder="Descrição..." required>
+                <input type="text" id="q-description" placeholder="Descrição..." maxlength="255" required>
             </div>
             <div class="form-group">
                 <label>Data</label>
@@ -532,7 +532,7 @@
         <form onsubmit="handleCreateCategory(event)">
             <div class="form-group">
                 <label>Nome</label>
-                <input type="text" id="new-category-name" placeholder="Ex: Lavanderia" required>
+                <input type="text" id="new-category-name" placeholder="Ex: Lavanderia" maxlength="50" required>
             </div>
             <div class="form-group">
                 <label>Ícone (emoji)</label>
@@ -602,7 +602,7 @@
         <form onsubmit="handleAddAccount(event)">
             <div class="form-group">
                 <label>Nome</label>
-                <input type="text" id="account-name" placeholder="Conta principal do hotel" required>
+                <input type="text" id="account-name" placeholder="Conta principal do hotel" maxlength="80" required>
             </div>
             <div class="form-group">
                 <label>Tipo</label>
@@ -635,7 +635,7 @@
         <form onsubmit="handleAddCard(event)">
             <div class="form-group">
                 <label>Nome do cartão</label>
-                <input type="text" id="card-name" placeholder="Cartão corporativo do hotel" required>
+                <input type="text" id="card-name" placeholder="Cartão corporativo do hotel" maxlength="80" required>
             </div>
             <div class="form-group">
                 <label>Limite</label>
@@ -690,7 +690,7 @@
     </div>
 </div>
 
-<script src="ui-shim.js?v=20261120-3"></script>
-<script src="app.js?v=20261120-3"></script>
+<script src="ui-shim.js?v=20261120-4"></script>
+<script src="app.js?v=20261120-4"></script>
 </body>
 </html>

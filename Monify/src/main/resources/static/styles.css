@@ -1137,3 +1137,8 @@ button.hero-chart-icon:hover, button.hero-chart-icon:focus-visible { opacity:0.9
 @media (max-width:900px) {
     .auth-box { min-height:0; }
 }
+
+/* Percentual no card de limites da home */
+.lim-item-pct { font-size:0.72rem; font-weight:600; color:var(--green, #1F9E6D); margin-top:0.3rem; }
+.lim-item-pct.warn { color:#b7791f; }
+.lim-item-pct.over { color:var(--red, #C0392B); }

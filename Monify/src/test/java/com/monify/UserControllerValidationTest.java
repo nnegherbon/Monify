@@ -26,15 +26,15 @@ class UserControllerValidationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Teste\",\"email\":\"teste.validacao@example.com\",\"password\":\"1\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Senha deve ter no mínimo 6 caracteres"))
-                .andExpect(jsonPath("$.fields.password").value("Senha deve ter no mínimo 6 caracteres"));
+                .andExpect(jsonPath("$.error").value("Senha deve ter no mínimo 8 caracteres, com letras e números"))
+                .andExpect(jsonPath("$.fields.password").value("Senha deve ter no mínimo 8 caracteres, com letras e números"));
     }
 
     @Test
     void registerWithInvalidEmailReturnsReadableMessage() throws Exception {
         mockMvc.perform(post("/api/users/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Teste\",\"email\":\"nao-e-email\",\"password\":\"123456\"}"))
+                        .content("{\"name\":\"Teste\",\"email\":\"nao-e-email\",\"password\":\"senha1234\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Email deve ser válido"));
     }

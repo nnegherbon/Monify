@@ -49,7 +49,7 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         Optional<Long> authUserId = authService.findUserIdByToken(extractToken(request));
         if (authUserId.isEmpty()) {
-            writeError(response, HttpStatus.UNAUTHORIZED, "Sessao expirada. Faca login novamente.");
+            writeError(response, HttpStatus.UNAUTHORIZED, "Sessão expirada. Faça login novamente.");
             return false;
         }
 
